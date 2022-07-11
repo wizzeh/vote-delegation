@@ -1,7 +1,4 @@
-use anchor_lang::{
-    prelude::*,
-    system_program::{self, Transfer},
-};
+use anchor_lang::prelude::*;
 
 use crate::state::{
     delegation::Delegation,

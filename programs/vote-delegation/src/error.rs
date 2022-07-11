@@ -10,4 +10,7 @@ pub enum DelegationError {
 
     #[msg("Mismatched delegation record address provided.")]
     IncorrectDelegationAddress,
+
+    #[msg("Provided delegation record does not match the delegate provided.")]
+    NonMatchingDelegationRecordProvided,
 }
