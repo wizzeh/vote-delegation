@@ -23,6 +23,7 @@ pub fn update_voter_weight_record<'info>(
     voter_weight_action: VoterWeightAction,
     target: Option<Pubkey>,
 ) -> Result<()> {
+    // TODO: Entry reqs.
     let voter_weight_record = &mut ctx.accounts.voter_weight_record;
 
     for chunk in ctx.remaining_accounts.chunks_exact(2) {
