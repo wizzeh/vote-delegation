@@ -66,7 +66,7 @@ pub struct RevokeVote<'info> {
             delegated_voter_weight_record.weight_action_target.unwrap().key().as_ref()
         ],
         bump,
-        // TODO Owner
+        owner = crate::ID
     )]
     delegated_voter_weight_record: OrphanAccount<'info, VoterWeightRecord>,
 
@@ -142,6 +142,9 @@ pub fn revoke_vote<'info>(ctx: Context<'_, 'info, '_, 'info, RevokeVote<'info>>)
         .voter_weight
         .checked_sub(delegation_record_data.voter_weight)
         .unwrap();
+
+    // TODO: dispose delegation record
+    // TODO: https://github.com/solana-labs/governance-program-library/blob/d42e76dea4277c26ddeb24774345c01c983d20d3/programs/nft-voter/src/instructions/relinquish_nft_vote.rs#L108
 
     // We only need to unvote if a vote has actually been cast.
     if !ctx.accounts.vote_record_info.data_is_empty() {

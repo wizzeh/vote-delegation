@@ -1,3 +1,3 @@
 pub mod delegation;
-pub mod registrar;
+pub mod settings;
 pub mod voter_weight_record;

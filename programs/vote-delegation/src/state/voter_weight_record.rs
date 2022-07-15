@@ -33,7 +33,7 @@ pub enum VoterWeightAction {
 /// It's redefined here without account_discriminator for Anchor to treat it as native account
 ///
 /// The account is used as an api interface to provide voting power to the governance program from external addin contracts
-#[account(account)] // TODO: alternate owner?
+#[account(account)]
 #[derive(Debug, PartialEq)]
 pub struct VoterWeightRecord {
     /// The Realm the VoterWeightRecord belongs to

@@ -19,4 +19,10 @@ pub enum DelegationError {
 
     #[msg("Provided voter weight has not been delegated to provided delegate.")]
     VoterWeightNotDelegatedToDelegate,
+
+    #[msg("Only the realm authority can change voter weight settings.")]
+    NotRealmAuthority,
+
+    #[msg("Invalid voter weight record source.")]
+    InvalidVoterWeightRecordSource,
 }

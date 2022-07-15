@@ -5,6 +5,7 @@ use crate::{
     error::DelegationError,
     state::{
         delegation::Delegation,
+        settings::Settings,
         voter_weight_record::{VoterWeightAction, VoterWeightRecord},
     },
 };
@@ -16,6 +17,16 @@ pub struct UpdateVoterWeightRecord<'info> {
 
     #[account(mut)]
     payer: AccountInfo<'info>,
+
+    #[account(
+        seeds = [
+            b"settings".as_ref(),
+            realm.key().as_ref(),
+            voter_weight_record.governing_token_mint.key().as_ref(),
+        ],
+        bump
+    )]
+    settings: Account<'info, Settings>,
 
     #[account(
         seeds = [
@@ -47,7 +58,6 @@ pub fn update_voter_weight_record<'info>(
     voter_weight_action: VoterWeightAction,
     target: Option<Pubkey>,
 ) -> Result<()> {
-    // TODO: Entry reqs.
     let voter_weight_record = &mut ctx.accounts.voter_weight_record;
 
     require_keys_eq!(
@@ -80,7 +90,11 @@ pub fn update_voter_weight_record<'info>(
             DelegationError::VoterWeightNotDelegatedToDelegate
         );
 
-        // TODO: Owner?
+        require_keys_eq!(
+            *account.owner,
+            ctx.accounts.settings.voter_weight_source,
+            DelegationError::InvalidVoterWeightRecordSource
+        );
         let to_agg = OrphanAccount::<VoterWeightRecord>::try_from(account)?;
         voter_weight_record.try_aggregate(&to_agg)?;
 
