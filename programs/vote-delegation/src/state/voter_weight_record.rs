@@ -1,4 +1,6 @@
-use anchor_lang::{prelude::*, solana_program::program_pack::IsInitialized};
+use anchor_lang::{
+    accounts::orphan::Orphan, prelude::*, solana_program::program_pack::IsInitialized,
+};
 use num_derive::FromPrimitive;
 
 use crate::error::DelegationError;
@@ -31,7 +33,7 @@ pub enum VoterWeightAction {
 /// It's redefined here without account_discriminator for Anchor to treat it as native account
 ///
 /// The account is used as an api interface to provide voting power to the governance program from external addin contracts
-#[account]
+#[account(account)] // TODO: alternate owner?
 #[derive(Debug, PartialEq)]
 pub struct VoterWeightRecord {
     /// The Realm the VoterWeightRecord belongs to
@@ -72,6 +74,8 @@ pub struct VoterWeightRecord {
     pub reserved: [u8; 8],
 }
 
+impl Orphan for VoterWeightRecord {}
+
 impl VoterWeightRecord {
     pub fn try_aggregate(&mut self, other: &VoterWeightRecord) -> Result<()> {
         require!(
@@ -80,10 +84,6 @@ impl VoterWeightRecord {
         );
 
         require!(self.realm == other.realm, DelegationError::InvalidRealm);
-
-        // TODO: Require delegated
-
-        // TODO: Require not already aggregated, including in this instruction
 
         self.voter_weight += other.voter_weight;
 

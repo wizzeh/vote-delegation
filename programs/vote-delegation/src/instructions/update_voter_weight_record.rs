@@ -1,8 +1,12 @@
-use anchor_lang::prelude::*;
+use anchor_lang::{accounts::orphan::OrphanAccount, prelude::*};
+use spl_governance::state::token_owner_record::get_token_owner_record_data_for_realm_and_governing_mint;
 
-use crate::state::{
-    delegation::Delegation,
-    voter_weight_record::{VoterWeightAction, VoterWeightRecord},
+use crate::{
+    error::DelegationError,
+    state::{
+        delegation::Delegation,
+        voter_weight_record::{VoterWeightAction, VoterWeightRecord},
+    },
 };
 
 #[derive(Accounts)]
@@ -13,9 +17,29 @@ pub struct UpdateVoterWeightRecord<'info> {
     #[account(mut)]
     payer: AccountInfo<'info>,
 
-    voter_weight_record: Account<'info, VoterWeightRecord>,
+    #[account(
+        seeds = [
+            b"voter-weight-record".as_ref(),
+            voter_weight_record.realm.key().as_ref(),
+            voter_weight_record.governing_token_mint.key().as_ref(),
+            voter_weight_record.governing_token_owner.as_ref(),
+            voter_weight_record.weight_action_target.unwrap().as_ref()
+        ],
+        bump,
+        owner = crate::id()
+    )]
+    voter_weight_record: OrphanAccount<'info, VoterWeightRecord>,
 
     system_program: Program<'info, System>,
+
+    /// The program id of the spl-governance program the realm belongs to
+    /// CHECK: Can be any instance of spl-governance and it's not known at the compilation time
+    #[account(executable)]
+    governance_program_id: UncheckedAccount<'info>,
+
+    /// CHECK: Owned by spl-governance instance specified in governance_program_id
+    #[account(owner = governance_program_id.key())]
+    realm: UncheckedAccount<'info>,
 }
 
 pub fn update_voter_weight_record<'info>(
@@ -26,15 +50,43 @@ pub fn update_voter_weight_record<'info>(
     // TODO: Entry reqs.
     let voter_weight_record = &mut ctx.accounts.voter_weight_record;
 
-    for chunk in ctx.remaining_accounts.chunks_exact(2) {
+    require_keys_eq!(
+        ctx.accounts.realm.key(),
+        voter_weight_record.realm,
+        DelegationError::InvalidRealm
+    );
+
+    for to_aggregate in ctx.remaining_accounts.chunks_exact(3) {
         // Accumulate vote weight
-        let account = chunk.first().unwrap();
-        let to_agg = Account::<VoterWeightRecord>::try_from(account)?;
+        let mut to_aggregate_iter = to_aggregate.iter();
+        let account = to_aggregate_iter.next().unwrap();
+        let token_owner_info = to_aggregate_iter.next().unwrap();
+        let delegation_info = to_aggregate_iter.next().unwrap();
+
+        let token_owner_record = get_token_owner_record_data_for_realm_and_governing_mint(
+            ctx.accounts.governance_program_id.key,
+            token_owner_info,
+            &voter_weight_record.realm,
+            &voter_weight_record.governing_token_mint,
+        )?;
+
+        require!(
+            token_owner_record.governance_delegate.is_some(),
+            DelegationError::VoterWeightNotDelegatedToDelegate
+        );
+        require_keys_eq!(
+            token_owner_record.governance_delegate.unwrap(),
+            ctx.accounts.delegate.key(),
+            DelegationError::VoterWeightNotDelegatedToDelegate
+        );
+
+        // TODO: Owner?
+        let to_agg = OrphanAccount::<VoterWeightRecord>::try_from(account)?;
         voter_weight_record.try_aggregate(&to_agg)?;
 
         // Create delegation record
         let loader =
-            AccountLoader::<Delegation>::try_from_unchecked(&crate::id(), chunk.last().unwrap())?;
+            AccountLoader::<Delegation>::try_from_unchecked(&crate::id(), delegation_info)?;
         let mut delegate = Delegation::try_init(
             &loader,
             &to_agg,

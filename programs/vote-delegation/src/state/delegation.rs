@@ -20,9 +20,10 @@ impl Delegation {
         realm: &Pubkey,
         governing_token_mint: &Pubkey,
         governing_token_owner: &Pubkey,
+        target: &Pubkey,
     ) -> Pubkey {
         Pubkey::try_find_program_address(
-            &Delegation::get_pda_seeds(realm, governing_token_mint, governing_token_owner),
+            &Delegation::get_pda_seeds(realm, governing_token_mint, governing_token_owner, target),
             &crate::id(),
         )
         .unwrap()
@@ -33,12 +34,14 @@ impl Delegation {
         realm: &'a Pubkey,
         governing_token_mint: &'a Pubkey,
         governing_token_owner: &'a Pubkey,
-    ) -> [&'a [u8]; 4] {
+        target: &'a Pubkey,
+    ) -> [&'a [u8]; 5] {
         [
             b"voter-weight-record-delegation".as_ref(),
             realm.as_ref(),
             governing_token_mint.as_ref(),
             governing_token_owner.as_ref(),
+            target.as_ref(),
         ]
     }
 
@@ -48,12 +51,18 @@ impl Delegation {
         payer: AccountInfo<'a>,
         system_program: AccountInfo<'a>,
     ) -> Result<RefMut<'b, Self>> {
+        require!(
+            loader.to_account_info().data_is_empty(),
+            DelegationError::VoterWeightAlreadyDelegated
+        );
+
         require_keys_eq!(
             loader.to_account_info().key(),
             Delegation::get_pda_address(
                 &record_for.realm,
                 &record_for.governing_token_mint,
-                &record_for.governing_token_owner
+                &record_for.governing_token_owner,
+                &record_for.weight_action_target.unwrap()
             ),
             DelegationError::IncorrectDelegationAddress,
         );

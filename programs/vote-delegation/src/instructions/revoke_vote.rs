@@ -1,4 +1,5 @@
 use anchor_lang::{
+    accounts::orphan::OrphanAccount,
     prelude::*,
     solana_program::{instruction::Instruction, program::invoke},
 };
@@ -36,8 +37,9 @@ pub struct RevokeVote<'info> {
         bump,
         payer = payer,
         space = 8 + std::mem::size_of::<VoterWeightRecord>(),
+        owner = crate::ID
     )]
-    revoke_weight_record: Account<'info, VoterWeightRecord>,
+    revoke_weight_record: OrphanAccount<'info, VoterWeightRecord>,
 
     delegate: AccountInfo<'info>,
 
@@ -48,7 +50,8 @@ pub struct RevokeVote<'info> {
             b"voter-weight-record-delegation".as_ref(),
             realm_info.key().as_ref(),
             realm_governing_token_mint.key().as_ref(),
-            governing_token_owner.key().as_ref() // TODO: Does this need to include the proposal?
+            governing_token_owner.key().as_ref(),
+            delegated_voter_weight_record.weight_action_target.unwrap().key().as_ref()
         ],
         bump
     )]
@@ -59,11 +62,13 @@ pub struct RevokeVote<'info> {
             b"voter-weight-record".as_ref(),
             realm_info.key().as_ref(),
             realm_governing_token_mint.key().as_ref(),
-            delegate.key().as_ref()
+            delegate.key().as_ref(),
+            delegated_voter_weight_record.weight_action_target.unwrap().key().as_ref()
         ],
         bump,
+        // TODO Owner
     )]
-    delegated_voter_weight_record: Account<'info, VoterWeightRecord>,
+    delegated_voter_weight_record: OrphanAccount<'info, VoterWeightRecord>,
 
     /// The program id of the spl-governance program the realm belongs to
     /// CHECK: Can be any instance of spl-governance and it's not known at the compilation time

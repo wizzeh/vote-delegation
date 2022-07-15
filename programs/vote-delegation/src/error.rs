@@ -13,4 +13,10 @@ pub enum DelegationError {
 
     #[msg("Provided delegation record does not match the delegate provided.")]
     NonMatchingDelegationRecordProvided,
+
+    #[msg("Provided voter weight has already been delegated.")]
+    VoterWeightAlreadyDelegated,
+
+    #[msg("Provided voter weight has not been delegated to provided delegate.")]
+    VoterWeightNotDelegatedToDelegate,
 }

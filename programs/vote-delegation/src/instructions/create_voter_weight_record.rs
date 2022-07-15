@@ -1,10 +1,10 @@
-use anchor_lang::prelude::*;
+use anchor_lang::{accounts::orphan::OrphanAccount, prelude::*};
 
-use crate::state::voter_weight_record::VoterWeightRecord;
+use crate::state::voter_weight_record::{VoterWeightAction, VoterWeightRecord};
 use anchor_spl::token::Mint;
 
 #[derive(Accounts)]
-#[instruction(governing_token_owner: Pubkey, target: Pubkey)]
+#[instruction(governing_token_owner: Pubkey, target: Pubkey, action: VoterWeightAction)]
 pub struct CreateVoterWeightRecord<'info> {
     #[account(mut)]
     payer: Signer<'info>,
@@ -21,8 +21,9 @@ pub struct CreateVoterWeightRecord<'info> {
         bump,
         payer = payer,
         space = 8 + std::mem::size_of::<VoterWeightRecord>(),
+        owner = crate::ID
     )]
-    voter_weight_record: Account<'info, VoterWeightRecord>,
+    voter_weight_record: OrphanAccount<'info, VoterWeightRecord>,
 
     /// The program id of the spl-governance program the realm belongs to
     /// CHECK: Can be any instance of spl-governance and it's not known at the compilation time
@@ -43,6 +44,7 @@ pub fn create_voter_weight_record(
     ctx: Context<CreateVoterWeightRecord>,
     governing_token_owner: Pubkey,
     target: Pubkey,
+    action: VoterWeightAction,
 ) -> Result<()> {
     spl_governance::state::realm::get_realm_data_for_governing_token_mint(
         &ctx.accounts.governance_program_id.key(),
