@@ -24,3 +24,4 @@ anchor-spl = {version = "0.25.0", git = "https://github.com/wizzeh/anchor", bran
 num-derive = "0.3.3"
 num-traits = "0.2.15"
 spl-governance = {version = "3.0.0", git = "https://github.com/wizzeh/solana-program-library", branch = "relinquish-partial"}
+static_assertions = "1.1.0"

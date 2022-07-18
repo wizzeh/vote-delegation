@@ -1,5 +1,10 @@
-use anchor_lang::{accounts::orphan::OrphanAccount, prelude::*};
+use anchor_lang::{
+    accounts::orphan::OrphanAccount,
+    prelude::*,
+    solana_program::clock::{DEFAULT_MS_PER_SLOT, DEFAULT_S_PER_SLOT},
+};
 use spl_governance::state::token_owner_record::get_token_owner_record_data_for_realm_and_governing_mint;
+use static_assertions::const_assert;
 
 use crate::{
     error::DelegationError,
@@ -52,6 +57,9 @@ pub struct UpdateVoterWeightRecord<'info> {
     #[account(owner = governance_program_id.key())]
     realm: UncheckedAccount<'info>,
 }
+
+const_assert!(APPROX_SLOTS_PER_MINUTE > 0);
+const APPROX_SLOTS_PER_MINUTE: u64 = (60.0 / DEFAULT_S_PER_SLOT) as u64;
 
 pub fn update_voter_weight_record<'info>(
     ctx: Context<'_, '_, '_, 'info, UpdateVoterWeightRecord<'info>>,
@@ -111,7 +119,8 @@ pub fn update_voter_weight_record<'info>(
         delegate.voter_weight = to_agg.voter_weight;
     }
 
-    voter_weight_record.voter_weight_expiry = Some(Clock::get()?.slot); // TODO: End of proposal?
+    // Give some time to spend multiple transactions aggregating.
+    voter_weight_record.voter_weight_expiry = Some(Clock::get()?.slot + APPROX_SLOTS_PER_MINUTE);
     voter_weight_record.weight_action = Some(voter_weight_action);
     voter_weight_record.weight_action_target = target;
 

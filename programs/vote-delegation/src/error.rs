@@ -25,4 +25,7 @@ pub enum DelegationError {
 
     #[msg("Invalid voter weight record source.")]
     InvalidVoterWeightRecordSource,
+
+    #[msg("Voter weight record must be expired to revoke.")]
+    VoterWeightRecordMustBeExpired,
 }

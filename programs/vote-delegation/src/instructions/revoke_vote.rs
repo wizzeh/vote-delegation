@@ -18,6 +18,7 @@ use crate::{
         delegation::Delegation,
         voter_weight_record::{VoterWeightAction, VoterWeightRecord},
     },
+    tools::dispose_account,
 };
 
 #[derive(Accounts)]
@@ -103,7 +104,7 @@ pub struct RevokeVote<'info> {
     system_program: Program<'info, System>,
 }
 
-pub fn revoke_vote<'info>(ctx: Context<'_, 'info, '_, 'info, RevokeVote<'info>>) -> Result<()> {
+pub fn revoke_vote<'a, 'b, 'c, 'd, 'e>(ctx: Context<'a, 'b, 'c, 'd, RevokeVote<'e>>) -> Result<()> {
     let delegation_record_data = ctx.accounts.delegation_record.load()?;
 
     require_keys_eq!(
@@ -143,8 +144,20 @@ pub fn revoke_vote<'info>(ctx: Context<'_, 'info, '_, 'info, RevokeVote<'info>>)
         .checked_sub(delegation_record_data.voter_weight)
         .unwrap();
 
-    // TODO: dispose delegation record
-    // TODO: https://github.com/solana-labs/governance-program-library/blob/d42e76dea4277c26ddeb24774345c01c983d20d3/programs/nft-voter/src/instructions/relinquish_nft_vote.rs#L108
+    // This is needed to prevent double-voting when stacking voter weight plugins
+    // Without this assertion the following attack vector exists:
+    // 1) vote-delegation.update_voter_weight_record
+    // 2) other-stacked-plugin.update_voter_weight_record
+    // 3) voter-delegation.revoke_vote
+    // 4) spl-gov.cast_vote
+    if ctx
+        .accounts
+        .delegated_voter_weight_record
+        .voter_weight_expiry
+        >= Some(Clock::get()?.slot)
+    {
+        return Err(DelegationError::VoterWeightRecordMustBeExpired.into());
+    }
 
     // We only need to unvote if a vote has actually been cast.
     if !ctx.accounts.vote_record_info.data_is_empty() {
@@ -172,39 +185,53 @@ pub fn revoke_vote<'info>(ctx: Context<'_, 'info, '_, 'info, RevokeVote<'info>>)
 
         invoke(
             &ctx.accounts.get_relinquish_instruction(),
-            ctx.accounts.get_relinquish_account_infos().as_slice(),
+            get_relinquish_accounts(&ctx).as_slice(),
         )?;
+
+        // This account is disposed here to prevent double-relinquishment.
+        dispose_account(
+            &ctx.accounts.revoke_weight_record.to_account_info(),
+            &ctx.accounts.payer,
+        );
     }
 
+    // The delegate paid for this account so they get the lamports back.
+    dispose_account(
+        &ctx.accounts.delegation_record.to_account_info(),
+        &ctx.accounts.delegate,
+    );
+
     Ok(())
+}
+
+fn get_relinquish_accounts<'e, 'f>(ctx: &'f Context<RevokeVote<'e>>) -> [AccountInfo<'e>; 9] {
+    [
+        ctx.accounts.realm_info.to_account_info(),
+        ctx.accounts.governance_info.to_account_info(),
+        ctx.accounts.proposal_info.to_account_info(),
+        ctx.accounts
+            .delegate_token_owner_record_info
+            .to_account_info(),
+        ctx.accounts.vote_record_info.to_account_info(),
+        ctx.accounts.realm_governing_token_mint.to_account_info(),
+        ctx.accounts.delegate.to_account_info(),
+        ctx.accounts.delegate.to_account_info(),
+        ctx.accounts.revoke_weight_record.to_account_info(),
+    ]
 }
 
 impl<'a> RevokeVote<'a> {
     pub fn get_relinquish_instruction(&self) -> Instruction {
         spl_governance::instruction::relinquish_vote(
-            self.governance_program_id.key,
-            self.realm_info.key,
-            self.governance_info.key,
-            self.proposal_info.key,
-            self.delegate_token_owner_record_info.key,
+            &self.governance_program_id.key(),
+            &self.realm_info.key(),
+            &self.governance_info.key(),
+            &self.proposal_info.key(),
+            &self.delegate_token_owner_record_info.key(),
             &self.realm_governing_token_mint.key(),
             Some(self.delegate.key()),
             Some(self.delegate.key()),
             Some(self.revoke_weight_record.key()),
         )
-    }
-
-    pub fn get_relinquish_account_infos(&'a self) -> [AccountInfo<'a>; 9] {
-        [
-            self.realm_info.to_account_info(),
-            self.governance_info.to_account_info(),
-            self.proposal_info.to_account_info(),
-            self.delegate_token_owner_record_info.to_account_info(),
-            self.vote_record_info.to_account_info(),
-            self.realm_governing_token_mint.to_account_info(),
-            self.delegate.to_account_info(),
-            self.delegate.to_account_info(),
-            self.revoke_weight_record.to_account_info(),
-        ]
     }
 }
