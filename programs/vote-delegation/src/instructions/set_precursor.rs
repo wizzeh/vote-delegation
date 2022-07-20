@@ -8,8 +8,9 @@ use crate::{error::DelegationError, state::settings::Settings};
 pub struct SetPrecursor<'info> {
     signer: Signer<'info>,
 
+    /// CHECK: Payer
     #[account(mut)]
-    payer: AccountInfo<'info>,
+    payer: UncheckedAccount<'info>,
 
     #[account(
         init_if_needed,
@@ -29,6 +30,7 @@ pub struct SetPrecursor<'info> {
     #[account(executable)]
     governance_program_id: UncheckedAccount<'info>,
 
+    /// CHECK: Manually deserialized.
     realm_info: UncheckedAccount<'info>,
 
     system_program: Program<'info, System>,

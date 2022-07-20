@@ -1,6 +1,6 @@
-mod error;
+pub mod error;
 mod instructions;
-mod state;
+pub mod state;
 mod tools;
 
 use anchor_lang::prelude::*;

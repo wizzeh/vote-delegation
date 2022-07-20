@@ -20,8 +20,9 @@ use crate::{
 pub struct UpdateVoterWeightRecord<'info> {
     delegate: Signer<'info>,
 
+    /// CHECK: Payer
     #[account(mut)]
-    payer: AccountInfo<'info>,
+    payer: UncheckedAccount<'info>,
 
     #[account(
         seeds = [

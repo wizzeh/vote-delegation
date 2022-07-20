@@ -23,8 +23,9 @@ use crate::{
 
 #[derive(Accounts)]
 pub struct RevokeVote<'info> {
+    /// CHECK: Payer
     #[account(mut)]
-    payer: AccountInfo<'info>,
+    payer: UncheckedAccount<'info>,
 
     #[account(
         init,
@@ -42,7 +43,8 @@ pub struct RevokeVote<'info> {
     )]
     revoke_weight_record: OrphanAccount<'info, VoterWeightRecord>,
 
-    delegate: AccountInfo<'info>,
+    /// CHECK: Delegate
+    delegate: UncheckedAccount<'info>,
 
     #[account(
         mut,
@@ -185,7 +187,7 @@ pub fn revoke_vote<'a, 'b, 'c, 'd, 'e>(ctx: Context<'a, 'b, 'c, 'd, RevokeVote<'
 
         invoke(
             &ctx.accounts.get_relinquish_instruction(),
-            get_relinquish_accounts(&ctx).as_slice(),
+            &get_relinquish_accounts(&ctx)[..],
         )?;
 
         // This account is disposed here to prevent double-relinquishment.

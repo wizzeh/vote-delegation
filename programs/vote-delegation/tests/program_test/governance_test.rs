@@ -390,8 +390,4 @@ impl GovernanceTest {
             .get_borsh_account::<TokenOwnerRecordV2>(token_owner_record_key)
             .await
     }
-
-    pub async fn with_community_tokens(&mut self, realm_cookie: &RealmCookie) {
-        
-    }
 }
