@@ -28,4 +28,7 @@ pub enum DelegationError {
 
     #[msg("Voter weight record must be expired to revoke.")]
     VoterWeightRecordMustBeExpired,
+
+    #[msg("Cannot manually create a revocation voter weight record.")]
+    InvalidActionType,
 }

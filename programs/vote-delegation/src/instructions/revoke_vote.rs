@@ -34,7 +34,8 @@ pub struct RevokeVote<'info> {
             realm_info.key().as_ref(),
             realm_governing_token_mint.key().as_ref(),
             governing_token_owner.key().as_ref(),
-            delegated_voter_weight_record.weight_action_target.unwrap().key().as_ref()
+            delegated_voter_weight_record.weight_action_target.unwrap().key().as_ref(),
+            &borsh::to_vec(&delegated_voter_weight_record.weight_action).unwrap()
         ],
         bump,
         payer = payer,
@@ -54,7 +55,8 @@ pub struct RevokeVote<'info> {
             realm_info.key().as_ref(),
             realm_governing_token_mint.key().as_ref(),
             governing_token_owner.key().as_ref(),
-            delegated_voter_weight_record.weight_action_target.unwrap().key().as_ref()
+            delegated_voter_weight_record.weight_action_target.unwrap().key().as_ref(),
+            &borsh::to_vec(&delegated_voter_weight_record.weight_action).unwrap()
         ],
         bump
     )]
@@ -66,7 +68,8 @@ pub struct RevokeVote<'info> {
             realm_info.key().as_ref(),
             realm_governing_token_mint.key().as_ref(),
             delegate.key().as_ref(),
-            delegated_voter_weight_record.weight_action_target.unwrap().key().as_ref()
+            delegated_voter_weight_record.weight_action_target.unwrap().key().as_ref(),
+            &borsh::to_vec(&delegated_voter_weight_record.weight_action).unwrap()
         ],
         bump,
         owner = crate::ID

@@ -40,7 +40,8 @@ pub struct UpdateVoterWeightRecord<'info> {
             voter_weight_record.realm.key().as_ref(),
             voter_weight_record.governing_token_mint.key().as_ref(),
             voter_weight_record.governing_token_owner.as_ref(),
-            voter_weight_record.weight_action_target.unwrap().as_ref()
+            voter_weight_record.weight_action_target.unwrap().as_ref(),
+            &borsh::to_vec(&voter_weight_record.weight_action).unwrap()
         ],
         bump,
         owner = crate::id()
@@ -78,7 +79,7 @@ pub fn update_voter_weight_record<'info>(
     for to_aggregate in ctx.remaining_accounts.chunks_exact(3) {
         // Accumulate vote weight
         let mut to_aggregate_iter = to_aggregate.iter();
-        let account = to_aggregate_iter.next().unwrap();
+        let vwr_account = to_aggregate_iter.next().unwrap();
         let token_owner_info = to_aggregate_iter.next().unwrap();
         let delegation_info = to_aggregate_iter.next().unwrap();
 
@@ -100,11 +101,11 @@ pub fn update_voter_weight_record<'info>(
         );
 
         require_keys_eq!(
-            *account.owner,
+            *vwr_account.owner,
             ctx.accounts.settings.voter_weight_source,
             DelegationError::InvalidVoterWeightRecordSource
         );
-        let to_agg = OrphanAccount::<VoterWeightRecord>::try_from(account)?;
+        let to_agg = OrphanAccount::<VoterWeightRecord>::try_from(vwr_account)?;
         voter_weight_record.try_aggregate(&to_agg)?;
 
         // Create delegation record

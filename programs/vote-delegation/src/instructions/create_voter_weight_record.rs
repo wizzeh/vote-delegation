@@ -1,6 +1,9 @@
 use anchor_lang::{accounts::orphan::OrphanAccount, prelude::*};
 
-use crate::state::voter_weight_record::{VoterWeightAction, VoterWeightRecord};
+use crate::{
+    error::DelegationError,
+    state::voter_weight_record::{VoterWeightAction, VoterWeightRecord},
+};
 use anchor_spl::token::Mint;
 
 #[derive(Accounts)]
@@ -16,7 +19,8 @@ pub struct CreateVoterWeightRecord<'info> {
             realm.key().as_ref(),
             realm_governing_token_mint.key().as_ref(),
             governing_token_owner.as_ref(),
-            target.as_ref()
+            target.as_ref(),
+            &borsh::to_vec(&Some(action)).unwrap()
         ],
         bump,
         payer = payer,
@@ -46,6 +50,11 @@ pub fn create_voter_weight_record(
     target: Pubkey,
     action: VoterWeightAction,
 ) -> Result<()> {
+    require!(
+        action != VoterWeightAction::RevokeVote,
+        DelegationError::InvalidActionType
+    );
+
     spl_governance::state::realm::get_realm_data_for_governing_token_mint(
         &ctx.accounts.governance_program_id.key(),
         &ctx.accounts.realm,
@@ -58,6 +67,7 @@ pub fn create_voter_weight_record(
     voter_weight_record.governing_token_mint = ctx.accounts.realm_governing_token_mint.key();
     voter_weight_record.governing_token_owner = governing_token_owner;
     voter_weight_record.weight_action_target = Some(target);
+    voter_weight_record.weight_action = Some(action);
 
     // Set expiry to expired
     voter_weight_record.voter_weight_expiry = Some(0);

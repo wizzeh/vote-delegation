@@ -2,6 +2,7 @@ use anchor_lang::prelude::ERROR_CODE_OFFSET;
 // use gpl_nft_voter::error::NftVoterError;
 use solana_program::instruction::InstructionError;
 use solana_sdk::{signature::Keypair, transaction::TransactionError, transport::TransportError};
+use vote_delegation::error::DelegationError;
 // use spl_governance_tools::error::GovernanceToolsError;
 
 pub fn clone_keypair(source: &Keypair) -> Keypair {
@@ -12,6 +13,22 @@ pub fn clone_keypair(source: &Keypair) -> Keypair {
 #[allow(non_snake_case)]
 pub fn NopOverride<T>(_: &mut T) {}
 
+pub fn assert_vote_delegation_err(
+    banks_client_error: TransportError,
+    delegation_error: DelegationError,
+) {
+    let tx_error = banks_client_error.unwrap();
+
+    match tx_error {
+        TransactionError::InstructionError(_, instruction_error) => match instruction_error {
+            InstructionError::Custom(code) => {
+                assert_eq!(code, delegation_error as u32 + ERROR_CODE_OFFSET)
+            }
+            _ => panic!("{:?} Is not InstructionError::Custom()", instruction_error),
+        },
+        _ => panic!("{:?} Is not InstructionError", tx_error),
+    };
+}
 
 #[allow(dead_code)]
 pub fn assert_anchor_err(

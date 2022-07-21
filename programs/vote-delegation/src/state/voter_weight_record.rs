@@ -95,6 +95,7 @@ impl VoterWeightRecord {
         governing_token_mint: &Pubkey,
         governing_token_owner: &Pubkey,
         target: &Pubkey,
+        action: Option<VoterWeightAction>,
     ) -> Pubkey {
         Pubkey::try_find_program_address(
             &VoterWeightRecord::get_pda_seeds(
@@ -102,6 +103,7 @@ impl VoterWeightRecord {
                 governing_token_mint,
                 governing_token_owner,
                 target,
+                &borsh::to_vec(&action).unwrap(),
             ),
             &crate::id(),
         )
@@ -114,13 +116,15 @@ impl VoterWeightRecord {
         governing_token_mint: &'a Pubkey,
         governing_token_owner: &'a Pubkey,
         target: &'a Pubkey,
-    ) -> [&'a [u8]; 5] {
+        action: &'a [u8],
+    ) -> [&'a [u8]; 6] {
         [
             b"voter-weight-record".as_ref(),
             realm.as_ref(),
             governing_token_mint.as_ref(),
             governing_token_owner.as_ref(),
             target.as_ref(),
+            action,
         ]
     }
 }

@@ -7,7 +7,7 @@ use anchor_lang::{
 
 use crate::error::DelegationError;
 
-use super::voter_weight_record::VoterWeightRecord;
+use super::voter_weight_record::{VoterWeightAction, VoterWeightRecord};
 
 #[account(zero_copy)]
 pub struct Delegation {
@@ -21,9 +21,16 @@ impl Delegation {
         governing_token_mint: &Pubkey,
         governing_token_owner: &Pubkey,
         target: &Pubkey,
+        action: Option<VoterWeightAction>,
     ) -> Pubkey {
         Pubkey::try_find_program_address(
-            &Delegation::get_pda_seeds(realm, governing_token_mint, governing_token_owner, target),
+            &Delegation::get_pda_seeds(
+                realm,
+                governing_token_mint,
+                governing_token_owner,
+                target,
+                &borsh::to_vec(&action).unwrap(),
+            ),
             &crate::id(),
         )
         .unwrap()
@@ -35,13 +42,15 @@ impl Delegation {
         governing_token_mint: &'a Pubkey,
         governing_token_owner: &'a Pubkey,
         target: &'a Pubkey,
-    ) -> [&'a [u8]; 5] {
+        action: &'a [u8],
+    ) -> [&'a [u8]; 6] {
         [
             b"voter-weight-record-delegation".as_ref(),
             realm.as_ref(),
             governing_token_mint.as_ref(),
             governing_token_owner.as_ref(),
             target.as_ref(),
+            action,
         ]
     }
 
@@ -62,7 +71,8 @@ impl Delegation {
                 &record_for.realm,
                 &record_for.governing_token_mint,
                 &record_for.governing_token_owner,
-                &record_for.weight_action_target.unwrap()
+                &record_for.weight_action_target.unwrap(),
+                record_for.weight_action,
             ),
             DelegationError::IncorrectDelegationAddress,
         );

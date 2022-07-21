@@ -51,12 +51,13 @@ impl DelegationTest {
         realm: &RealmCookie,
         owner: &WalletCookie,
         target: Pubkey,
+        action: VoterWeightAction,
     ) -> Result<VoterWeightRecordCookie, TransportError> {
         let data = anchor_lang::InstructionData::data(
             &vote_delegation::instruction::CreateVoterWeightRecord {
                 governing_token_owner: owner.address,
                 target,
-                action: VoterWeightAction::CastVote,
+                action,
             },
         );
 
@@ -65,6 +66,7 @@ impl DelegationTest {
             &realm.community_mint_cookie.address,
             &owner.address,
             &target,
+            Some(action),
         );
         let accounts = anchor_lang::ToAccountMetas::to_account_metas(
             &vote_delegation::accounts::CreateVoterWeightRecord {
