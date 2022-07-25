@@ -33,9 +33,9 @@ pub struct PrecursorProgramCookie {
 }
 
 pub struct DelegatorCookie {
-    wallet: WalletCookie,
-    token_owner_record: TokenOwnerRecordCookie,
-    source_vwr: VoterWeightRecordCookie,
+    pub wallet: WalletCookie,
+    pub token_owner_record: TokenOwnerRecordCookie,
+    pub source_vwr: VoterWeightRecordCookie,
 }
 
 impl DelegationTest {

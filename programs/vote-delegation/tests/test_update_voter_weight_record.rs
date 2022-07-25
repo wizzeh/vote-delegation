@@ -4,7 +4,10 @@ use solana_program_test::tokio;
 use solana_sdk::{signature::Keypair, signer::Signer, transport::TransportError};
 use vote_delegation::{
     error::DelegationError,
-    state::voter_weight_record::{VoterWeightAction, VoterWeightRecord},
+    state::{
+        delegation::Delegation,
+        voter_weight_record::{VoterWeightAction, VoterWeightRecord},
+    },
 };
 
 mod program_test;
@@ -57,7 +60,37 @@ async fn test_update_voter_weight_record() -> TestOutcome {
         .get_anchor_account::<VoterWeightRecord>(vwr_cookie.address)
         .await;
 
-    assert_eq!(vwr_record.voter_weight, 10);
+    let delegate_record_addr = Delegation::get_pda_address(
+        &realm_cookie.address,
+        &realm_cookie.account.community_mint,
+        &delegator.wallet.address,
+        &delegator.source_vwr.target,
+        Some(delegator.source_vwr.action),
+    );
+    let delegate_record = vote_delegation_test
+        .bench
+        .get_anchor_account::<Delegation>(delegate_record_addr)
+        .await;
+    let delegate_record_acct = vote_delegation_test
+        .bench
+        .get_account(&delegate_record_addr)
+        .await
+        .unwrap();
+
+    assert_eq!(delegate_record.delegate, wallet.address);
+    assert_eq!(delegate_record.voter_weight, 10);
+    assert!(vote_delegation_test.bench.get_rent().await.is_exempt(
+        delegate_record_acct.lamports,
+        delegate_record_acct.data.len()
+    ));
+
+    assert_eq!(vwr_record.weight_action, Some(VoterWeightAction::CastVote));
+    assert_eq!(
+        vwr_record.weight_action_target,
+        Some(fake_proposal.pubkey())
+    );
+    assert_ne!(vwr_record.voter_weight_expiry, Some(0));
+    // assert_eq!(vwr_record.voter_weight, 10);
 
     Ok(())
 }

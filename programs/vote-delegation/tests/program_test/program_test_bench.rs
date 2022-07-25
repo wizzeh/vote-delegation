@@ -122,6 +122,15 @@ impl ProgramTestBench {
             .unwrap()
     }
 
+    pub async fn get_rent(&self) -> solana_program::rent::Rent {
+        self.context
+            .borrow_mut()
+            .banks_client
+            .get_sysvar::<solana_program::rent::Rent>()
+            .await
+            .unwrap()
+    }
+
     #[allow(dead_code)]
     pub async fn advance_clock(&self) {
         let clock = self.get_clock().await;
