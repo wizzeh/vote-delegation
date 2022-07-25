@@ -68,11 +68,9 @@ pub fn update_voter_weight_record<'info>(
     voter_weight_action: VoterWeightAction,
     target: Option<Pubkey>,
 ) -> Result<()> {
-    let voter_weight_record = &mut ctx.accounts.voter_weight_record;
-
     require_keys_eq!(
         ctx.accounts.realm.key(),
-        voter_weight_record.realm,
+        ctx.accounts.voter_weight_record.realm,
         DelegationError::InvalidRealm
     );
 
@@ -86,8 +84,8 @@ pub fn update_voter_weight_record<'info>(
         let token_owner_record = get_token_owner_record_data_for_realm_and_governing_mint(
             ctx.accounts.governance_program_id.key,
             token_owner_info,
-            &voter_weight_record.realm,
-            &voter_weight_record.governing_token_mint,
+            &ctx.accounts.voter_weight_record.realm,
+            &ctx.accounts.voter_weight_record.governing_token_mint,
         )?;
 
         require!(
@@ -106,25 +104,60 @@ pub fn update_voter_weight_record<'info>(
             DelegationError::InvalidVoterWeightRecordSource
         );
         let to_agg = OrphanAccount::<VoterWeightRecord>::try_from(vwr_account)?;
-        voter_weight_record.try_aggregate(&to_agg)?;
+        ctx.accounts.voter_weight_record.voter_weight =
+            ctx.accounts.voter_weight_record.try_aggregate(&to_agg)?;
+        msg!(&format!(
+            "-------------------- {}",
+            ctx.accounts.voter_weight_record.voter_weight
+        ));
 
         // Create delegation record
-        let loader =
-            AccountLoader::<Delegation>::try_from_unchecked(&crate::id(), delegation_info)?;
-        let mut delegate = Delegation::try_init(
-            &loader,
-            &to_agg,
-            ctx.accounts.payer.to_account_info(),
-            ctx.accounts.system_program.to_account_info(),
+        let encoded_action =
+            borsh::to_vec(&ctx.accounts.voter_weight_record.weight_action).unwrap();
+        let target = ctx
+            .accounts
+            .voter_weight_record
+            .weight_action_target
+            .unwrap();
+        let signer_seeds = Delegation::get_pda_seeds(
+            ctx.accounts.realm.key,
+            &token_owner_record.governing_token_mint,
+            &token_owner_record.governing_token_owner,
+            &target,
+            &encoded_action,
+        );
+        let (_, bump) = Pubkey::find_program_address(&signer_seeds, &crate::id());
+        Delegation::try_create(
+            delegation_info,
+            &ctx.accounts.payer,
+            &ctx.accounts.system_program,
+            &Delegation::get_pda_seeds(
+                ctx.accounts.realm.key,
+                &token_owner_record.governing_token_mint.key(),
+                &token_owner_record.governing_token_owner,
+                &ctx.accounts
+                    .voter_weight_record
+                    .weight_action_target
+                    .unwrap(),
+                &borsh::to_vec(&ctx.accounts.voter_weight_record.weight_action).unwrap(),
+            ),
+            &[bump],
+            &Delegation {
+                delegate: ctx.accounts.delegate.key(),
+                voter_weight: to_agg.voter_weight,
+            },
         )?;
-        delegate.delegate = ctx.accounts.delegate.key();
-        delegate.voter_weight = to_agg.voter_weight;
     }
 
     // Give some time to spend multiple transactions aggregating.
-    voter_weight_record.voter_weight_expiry = Some(Clock::get()?.slot + APPROX_SLOTS_PER_MINUTE);
-    voter_weight_record.weight_action = Some(voter_weight_action);
-    voter_weight_record.weight_action_target = target;
+    ctx.accounts.voter_weight_record.voter_weight_expiry =
+        Some(Clock::get()?.slot + APPROX_SLOTS_PER_MINUTE);
+    ctx.accounts.voter_weight_record.weight_action = Some(voter_weight_action);
+    ctx.accounts.voter_weight_record.weight_action_target = target;
+    msg!(&format!(
+        "-------------------- {}",
+        ctx.accounts.voter_weight_record.voter_weight
+    ));
 
     Ok(())
 }

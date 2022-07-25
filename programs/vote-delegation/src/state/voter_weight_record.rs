@@ -77,7 +77,7 @@ pub struct VoterWeightRecord {
 impl Orphan for VoterWeightRecord {}
 
 impl VoterWeightRecord {
-    pub fn try_aggregate(&mut self, other: &VoterWeightRecord) -> Result<()> {
+    pub fn try_aggregate(&self, other: &VoterWeightRecord) -> Result<u64> {
         require!(
             self.governing_token_mint == other.governing_token_mint,
             DelegationError::InvalidGoverningTokenMint
@@ -85,9 +85,7 @@ impl VoterWeightRecord {
 
         require!(self.realm == other.realm, DelegationError::InvalidRealm);
 
-        self.voter_weight += other.voter_weight;
-
-        Ok(())
+        Ok(self.voter_weight.checked_add(other.voter_weight).unwrap())
     }
 
     pub fn get_pda_address(

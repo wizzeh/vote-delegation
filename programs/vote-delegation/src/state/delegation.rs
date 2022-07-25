@@ -1,15 +1,20 @@
 use std::cell::RefMut;
 
+use anchor_lang::Discriminator;
 use anchor_lang::{
     prelude::*,
     system_program::{self, Transfer},
+};
+use solana_program::{
+    program::{invoke, invoke_signed},
+    system_instruction::{self, create_account},
 };
 
 use crate::error::DelegationError;
 
 use super::voter_weight_record::{VoterWeightAction, VoterWeightRecord};
 
-#[account(zero_copy)]
+#[account]
 pub struct Delegation {
     pub delegate: Pubkey,
     pub voter_weight: u64,
@@ -54,49 +59,81 @@ impl Delegation {
         ]
     }
 
-    pub fn try_init<'a, 'b>(
-        loader: &'b AccountLoader<'a, Delegation>,
-        record_for: &VoterWeightRecord,
-        payer: AccountInfo<'a>,
-        system_program: AccountInfo<'a>,
-    ) -> Result<RefMut<'b, Self>> {
-        require!(
-            loader.to_account_info().data_is_empty(),
-            DelegationError::VoterWeightAlreadyDelegated
-        );
+    pub fn size() -> usize {
+        8 + std::mem::size_of::<Self>()
+    }
 
-        require_keys_eq!(
-            loader.to_account_info().key(),
-            Delegation::get_pda_address(
-                &record_for.realm,
-                &record_for.governing_token_mint,
-                &record_for.governing_token_owner,
-                &record_for.weight_action_target.unwrap(),
-                record_for.weight_action,
-            ),
-            DelegationError::IncorrectDelegationAddress,
-        );
+    pub fn try_create<'a>(
+        account_info: &AccountInfo<'a>,
+        payer_info: &AccountInfo<'a>,
+        system_info: &AccountInfo<'a>,
+        seeds: &[&[u8]],
+        bump: &[u8],
+        data: &Self,
+    ) -> Result<()> {
+        let serialized_data = [&Self::discriminator()[..], &data.try_to_vec()?].concat();
 
-        let delegation_rent = Rent::get()?.minimum_balance(8 + 32 + 8);
-        let delegate_record_data = loader.load_init()?;
-        let info = loader.to_account_info();
-        let delegate_record_lamports = info.try_borrow_mut_lamports()?;
-        let needed_lamports = (**delegate_record_lamports)
-            .checked_sub(delegation_rent)
-            .unwrap_or_default();
-        if needed_lamports > 0 {
-            system_program::transfer(
-                CpiContext::new(
-                    system_program.to_account_info(),
-                    Transfer {
-                        from: payer.to_account_info(),
-                        to: loader.to_account_info(),
-                    },
-                ),
-                needed_lamports,
+        let rent_exempt_lamports = Rent::get()?.minimum_balance(serialized_data.len()).max(1);
+
+        let signers_seeds: &[&[u8]] = &[seeds, &[bump]].concat();
+
+        // If the account has some lamports already it can't be created using create_account instruction
+        // Anybody can send lamports to a PDA and by doing so create the account and perform DoS attack by blocking create_account
+        if account_info.lamports() > 0 {
+            let top_up_lamports = rent_exempt_lamports.saturating_sub(account_info.lamports());
+
+            if top_up_lamports > 0 {
+                invoke(
+                    &system_instruction::transfer(
+                        payer_info.key,
+                        account_info.key,
+                        top_up_lamports,
+                    ),
+                    &[
+                        payer_info.clone(),
+                        account_info.clone(),
+                        system_info.clone(),
+                    ],
+                )?;
+            }
+
+            invoke_signed(
+                &system_instruction::allocate(account_info.key, Self::size() as u64),
+                &[account_info.clone(), system_info.clone()],
+                &[signers_seeds],
+            )?;
+
+            invoke_signed(
+                &system_instruction::assign(account_info.key, &crate::id()),
+                &[account_info.clone(), system_info.clone()],
+                &[signers_seeds],
+            )?;
+        } else {
+            // If the PDA doesn't exist use create_account to use lower compute budget
+            let create_account_instruction = create_account(
+                payer_info.key,
+                account_info.key,
+                rent_exempt_lamports,
+                Self::size() as u64,
+                &crate::id(),
+            );
+
+            invoke_signed(
+                &create_account_instruction,
+                &[
+                    payer_info.clone(),
+                    account_info.clone(),
+                    system_info.clone(),
+                ],
+                &[signers_seeds],
             )?;
         }
 
-        Ok(delegate_record_data)
+        account_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&serialized_data);
+
+        Ok(())
     }
 }

@@ -60,7 +60,7 @@ pub struct RevokeVote<'info> {
         ],
         bump
     )]
-    delegation_record: AccountLoader<'info, Delegation>,
+    delegation_record: Account<'info, Delegation>,
 
     #[account(
         seeds = [
@@ -110,7 +110,7 @@ pub struct RevokeVote<'info> {
 }
 
 pub fn revoke_vote<'a, 'b, 'c, 'd, 'e>(ctx: Context<'a, 'b, 'c, 'd, RevokeVote<'e>>) -> Result<()> {
-    let delegation_record_data = ctx.accounts.delegation_record.load()?;
+    let delegation_record_data = &ctx.accounts.delegation_record;
 
     require_keys_eq!(
         delegation_record_data.delegate,
