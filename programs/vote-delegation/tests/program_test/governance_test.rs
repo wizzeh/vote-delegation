@@ -6,7 +6,7 @@ use solana_sdk::{signature::Keypair, signer::Signer, transport::TransportError};
 use spl_governance::{
     instruction::{
         create_governance, create_proposal, create_realm, create_token_owner_record,
-        deposit_governing_tokens, relinquish_vote, sign_off_proposal,
+        deposit_governing_tokens, relinquish_vote, set_governance_delegate, sign_off_proposal,
     },
     state::{
         enums::{GovernanceAccountType, MintMaxVoteWeightSource, ProposalState, VoteTipping},
@@ -346,6 +346,28 @@ impl GovernanceTest {
             address: token_owner_record_key,
             account,
         })
+    }
+
+    pub async fn set_delegate(
+        &mut self,
+        owner: &WalletCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        new_delegate: Option<Pubkey>,
+    ) -> Result<(), TransportError> {
+        let set_delegate_ix = set_governance_delegate(
+            &self.program_id,
+            &owner.address,
+            &token_owner_record_cookie.account.realm,
+            &token_owner_record_cookie.account.governing_token_mint,
+            &token_owner_record_cookie.account.governing_token_owner,
+            &new_delegate,
+        );
+
+        self.bench
+            .process_transaction(&[set_delegate_ix], Some(&[&owner.signer]))
+            .await?;
+
+        Ok(())
     }
 
     #[allow(dead_code)]

@@ -12,7 +12,7 @@ use anchor_spl::{
 use solana_program::{borsh::try_from_slice_unchecked, system_program};
 use solana_program_test::{ProgramTest, ProgramTestContext};
 use solana_sdk::{
-    account::{Account, AccountSharedData, ReadableAccount},
+    account::{Account, AccountSharedData, ReadableAccount, WritableAccount},
     feature_set::spl_associated_token_account_v1_0_4,
     instruction::Instruction,
     program_pack::Pack,
@@ -423,6 +423,25 @@ impl ProgramTestBench {
             rent.minimum_balance(data.len())
         };
         let mut account_data = AccountSharedData::new(lamports, data.len(), &owner);
+        account_data.set_data(data);
+        self.context
+            .borrow_mut()
+            .set_account(&address, &account_data);
+        Ok(())
+    }
+
+    pub async fn set_executable_account(
+        &self,
+        data: Vec<u8>,
+        address: Pubkey,
+        owner: Pubkey,
+    ) -> Result<(), TransportError> {
+        let lamports = {
+            let rent = self.context.borrow_mut().banks_client.get_rent().await?;
+            rent.minimum_balance(data.len())
+        };
+        let mut account_data = AccountSharedData::new(lamports, data.len(), &owner);
+        account_data.set_executable(true);
         account_data.set_data(data);
         self.context
             .borrow_mut()
