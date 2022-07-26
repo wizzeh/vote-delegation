@@ -90,7 +90,7 @@ async fn test_update_voter_weight_record() -> TestOutcome {
         Some(fake_proposal.pubkey())
     );
     assert_ne!(vwr_record.voter_weight_expiry, Some(0));
-    // assert_eq!(vwr_record.voter_weight, 10);
+    assert_eq!(vwr_record.voter_weight, 10);
 
     Ok(())
 }

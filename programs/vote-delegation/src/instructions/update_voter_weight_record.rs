@@ -35,6 +35,7 @@ pub struct UpdateVoterWeightRecord<'info> {
     settings: Account<'info, Settings>,
 
     #[account(
+        mut,
         seeds = [
             b"voter-weight-record".as_ref(),
             voter_weight_record.realm.key().as_ref(),
@@ -106,10 +107,6 @@ pub fn update_voter_weight_record<'info>(
         let to_agg = OrphanAccount::<VoterWeightRecord>::try_from(vwr_account)?;
         ctx.accounts.voter_weight_record.voter_weight =
             ctx.accounts.voter_weight_record.try_aggregate(&to_agg)?;
-        msg!(&format!(
-            "-------------------- {}",
-            ctx.accounts.voter_weight_record.voter_weight
-        ));
 
         // Create delegation record
         let encoded_action =
@@ -154,10 +151,6 @@ pub fn update_voter_weight_record<'info>(
         Some(Clock::get()?.slot + APPROX_SLOTS_PER_MINUTE);
     ctx.accounts.voter_weight_record.weight_action = Some(voter_weight_action);
     ctx.accounts.voter_weight_record.weight_action_target = target;
-    msg!(&format!(
-        "-------------------- {}",
-        ctx.accounts.voter_weight_record.voter_weight
-    ));
 
     Ok(())
 }
