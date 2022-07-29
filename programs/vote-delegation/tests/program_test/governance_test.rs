@@ -5,7 +5,7 @@ use solana_program_test::ProgramTest;
 use solana_sdk::{signature::Keypair, signer::Signer, transport::TransportError};
 use spl_governance::{
     instruction::{
-        create_governance, create_proposal, create_realm, create_token_owner_record,
+        cast_vote, create_governance, create_proposal, create_realm, create_token_owner_record,
         deposit_governing_tokens, relinquish_vote, set_governance_delegate, sign_off_proposal,
     },
     state::{
@@ -14,6 +14,7 @@ use spl_governance::{
         proposal::{get_proposal_address, ProposalV2},
         realm::{get_realm_address, RealmConfig, RealmV2},
         token_owner_record::{get_token_owner_record_address, TokenOwnerRecordV2},
+        vote_record::VoteChoice,
     },
 };
 
@@ -21,6 +22,8 @@ use crate::program_test::{
     program_test_bench::{MintCookie, ProgramTestBench, WalletCookie},
     tools::clone_keypair,
 };
+
+use super::delegation_test::VoterWeightRecordCookie;
 
 pub struct RealmCookie {
     pub address: Pubkey,
@@ -56,7 +59,7 @@ pub struct GovernanceTest {
 
 impl GovernanceTest {
     pub fn program_id() -> Pubkey {
-        Pubkey::from_str("Governance111111111111111111111111111111111").unwrap()
+        Pubkey::from_str("GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPPCVZw").unwrap()
     }
 
     #[allow(dead_code)]
@@ -365,6 +368,39 @@ impl GovernanceTest {
 
         self.bench
             .process_transaction(&[set_delegate_ix], Some(&[&owner.signer]))
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn cast_vote(
+        &mut self,
+        realm: &RealmCookie,
+        proposal: &ProposalCookie,
+        wallet: &WalletCookie,
+        voter_owner_record_cookie: &TokenOwnerRecordCookie,
+        vwr: &VoterWeightRecordCookie,
+    ) -> Result<(), TransportError> {
+        let cast_vote_ix = cast_vote(
+            &self.program_id,
+            &realm.address,
+            &proposal.account.governance,
+            &proposal.address,
+            &proposal.account.token_owner_record,
+            &voter_owner_record_cookie.address,
+            &wallet.address,
+            &voter_owner_record_cookie.account.governing_token_mint,
+            &self.bench.payer.pubkey(),
+            Some(vwr.address),
+            None,
+            spl_governance::state::vote_record::Vote::Approve(vec![VoteChoice {
+                rank: 0,
+                weight_percentage: 100,
+            }]),
+        );
+
+        self.bench
+            .process_transaction(&[cast_vote_ix], Some(&[&self.bench.payer, &wallet.signer]))
             .await?;
 
         Ok(())

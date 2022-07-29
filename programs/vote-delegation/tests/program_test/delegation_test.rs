@@ -59,8 +59,21 @@ impl DelegationTest {
         Self {
             program_id,
             bench: bench_rc.clone(),
-            governance: GovernanceTest::new(bench_rc, Some(program_id), Some(program_id)),
+            governance: GovernanceTest::new(bench_rc, Some(program_id), None),
         }
+    }
+
+    pub async fn with_unassigned_tokens(
+        &mut self,
+        realm: &RealmCookie,
+    ) -> Result<(), TransportError> {
+        let mint = &realm.community_mint_cookie;
+
+        self.bench
+            .with_tokens(mint, &Pubkey::new_unique(), 100)
+            .await?;
+
+        Ok(())
     }
 
     pub async fn with_delegator(
