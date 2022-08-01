@@ -4,6 +4,9 @@ use anchor_lang::prelude::{AccountMeta, Pubkey};
 use solana_program::instruction::Instruction;
 use solana_program_test::{processor, ProgramTest};
 use solana_sdk::{signature::Keypair, signer::Signer, transport::TransportError};
+use spl_governance::state::{
+    realm_config::get_realm_config_address, vote_record::get_vote_record_address,
+};
 use vote_delegation::state::{
     delegation::Delegation,
     settings::Settings,
@@ -11,7 +14,7 @@ use vote_delegation::state::{
 };
 
 use super::{
-    governance_test::{GovernanceTest, RealmCookie, TokenOwnerRecordCookie},
+    governance_test::{GovernanceTest, ProposalCookie, RealmCookie, TokenOwnerRecordCookie},
     program_test_bench::{ProgramTestBench, WalletCookie},
 };
 
@@ -220,6 +223,72 @@ impl DelegationTest {
             target,
             owner: owner.address,
         })
+    }
+
+    pub async fn revoke_vote(
+        &mut self,
+        realm: &RealmCookie,
+        delegator: &DelegatorCookie,
+        to_revoke: &VoterWeightRecordCookie,
+        proposal: &ProposalCookie,
+        to_revoke_token_owner_record: &TokenOwnerRecordCookie,
+    ) -> Result<(), TransportError> {
+        let data = anchor_lang::InstructionData::data(&vote_delegation::instruction::RevokeVote {});
+
+        let accounts = anchor_lang::ToAccountMetas::to_account_metas(
+            &vote_delegation::accounts::RevokeVote {
+                payer: self.bench.payer.pubkey(),
+                revoke_weight_record: VoterWeightRecord::get_revocation_address(
+                    &realm.address,
+                    &realm.community_mint_cookie.address,
+                    &delegator.wallet.address,
+                    &to_revoke.target,
+                    Some(to_revoke.action),
+                ),
+                delegate: to_revoke.owner,
+                delegation_record: Delegation::get_pda_address(
+                    &realm.address,
+                    &realm.community_mint_cookie.address,
+                    &delegator.wallet.address,
+                    &to_revoke.target,
+                    Some(to_revoke.action),
+                ),
+                delegated_voter_weight_record: to_revoke.address,
+                governance_program_id: self.governance.program_id,
+                vote_record_info: get_vote_record_address(
+                    &self.governance.program_id,
+                    &to_revoke.target,
+                    &to_revoke_token_owner_record.address,
+                ),
+                realm_info: realm.address,
+                realm_config_info: get_realm_config_address(
+                    &self.governance.program_id,
+                    &realm.address,
+                ),
+                governance_info: proposal.account.governance,
+                proposal_info: proposal.address,
+                delegate_token_owner_record_info: to_revoke_token_owner_record.address,
+                realm_governing_token_mint: realm.community_mint_cookie.address,
+                governing_token_owner: delegator.wallet.address,
+                system_program: solana_sdk::system_program::id(),
+            },
+            None,
+        );
+
+        let revoke_ix = Instruction {
+            program_id: vote_delegation::id(),
+            accounts,
+            data,
+        };
+
+        self.bench
+            .process_transaction(
+                &[revoke_ix],
+                Some(&[&self.bench.payer, &delegator.wallet.signer]),
+            )
+            .await?;
+
+        Ok(())
     }
 
     pub async fn aggregate_delegation(

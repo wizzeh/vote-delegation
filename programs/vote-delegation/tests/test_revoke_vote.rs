@@ -1,18 +1,10 @@
-use program_test::{delegation_test::DelegationTest, tools::assert_vote_delegation_err};
-use solana_program::{program_pack::IsInitialized, vote};
+use program_test::delegation_test::DelegationTest;
 use solana_program_test::tokio;
-use solana_sdk::{signature::Keypair, signer::Signer, transport::TransportError};
-use spl_governance::state::{
-    proposal::ProposalV2,
-    realm::{RealmConfig, RealmV2},
-    realm_config::{get_realm_config_address, RealmConfigAccount},
-};
-use vote_delegation::{
-    error::DelegationError,
-    state::{
-        delegation::Delegation,
-        voter_weight_record::{VoterWeightAction, VoterWeightRecord},
-    },
+use solana_sdk::transport::TransportError;
+use spl_governance::state::{proposal::ProposalV2, vote_record::get_vote_record_address};
+use vote_delegation::state::{
+    delegation::Delegation,
+    voter_weight_record::{VoterWeightAction, VoterWeightRecord},
 };
 
 mod program_test;
@@ -74,43 +66,63 @@ async fn test_update_voter_weight_record() -> TestOutcome {
         )
         .await?;
 
+    vote_delegation_test.bench.advance_clock_a_lot().await;
+
     // Act
+    vote_delegation_test
+        .revoke_vote(
+            &realm_cookie,
+            &delegator,
+            &vwr_cookie,
+            &proposal,
+            &token_owner_record,
+        )
+        .await?;
 
     // Assert
-    assert!(false);
-    let vwr_record = vote_delegation_test
+    let proposal_record = vote_delegation_test
         .bench
-        .get_anchor_account::<VoterWeightRecord>(vwr_cookie.address)
+        .get_borsh_account::<ProposalV2>(&proposal.address)
         .await;
 
-    let delegate_record_addr = Delegation::get_pda_address(
-        &realm_cookie.address,
-        &realm_cookie.account.community_mint,
-        &delegator.wallet.address,
-        &delegator.source_vwr.target,
-        Some(delegator.source_vwr.action),
-    );
-    let delegate_record = vote_delegation_test
+    assert_eq!(proposal_record.options[0].vote_weight, 0);
+
+    let delegation_record = vote_delegation_test
         .bench
-        .get_anchor_account::<Delegation>(delegate_record_addr)
+        .get_account(&Delegation::get_pda_address(
+            &realm_cookie.address,
+            &realm_cookie.community_mint_cookie.address,
+            &delegator.wallet.address,
+            &proposal.address,
+            Some(VoterWeightAction::CastVote),
+        ))
         .await;
-    let delegate_record_acct = vote_delegation_test
+
+    assert!(delegation_record.is_none());
+
+    let revoke_record = vote_delegation_test
         .bench
-        .get_account(&delegate_record_addr)
-        .await
-        .unwrap();
+        .get_account(&VoterWeightRecord::get_revocation_address(
+            &realm_cookie.address,
+            &realm_cookie.community_mint_cookie.address,
+            &delegator.wallet.address,
+            &proposal.address,
+            Some(VoterWeightAction::CastVote),
+        ))
+        .await;
 
-    assert_eq!(delegate_record.delegate, wallet.address);
-    assert_eq!(delegate_record.voter_weight, 10);
-    assert!(vote_delegation_test.bench.get_rent().await.is_exempt(
-        delegate_record_acct.lamports,
-        delegate_record_acct.data.len()
-    ));
+    assert!(revoke_record.is_none());
 
-    assert_eq!(vwr_record.weight_action, Some(VoterWeightAction::CastVote));
-    assert_eq!(vwr_record.weight_action_target, Some(proposal.address));
-    assert_ne!(vwr_record.voter_weight_expiry, Some(0));
-    assert_eq!(vwr_record.voter_weight, 10);
+    let vote_record = vote_delegation_test
+        .bench
+        .get_account(&get_vote_record_address(
+            &vote_delegation_test.governance.program_id,
+            &vwr_cookie.target,
+            &token_owner_record.address,
+        ))
+        .await;
+
+    assert!(vote_record.is_none());
 
     Ok(())
 }

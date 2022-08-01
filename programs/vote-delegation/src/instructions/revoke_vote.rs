@@ -45,6 +45,7 @@ pub struct RevokeVote<'info> {
     revoke_weight_record: OrphanAccount<'info, VoterWeightRecord>,
 
     /// CHECK: Delegate
+    #[account(mut)]
     delegate: UncheckedAccount<'info>,
 
     #[account(
@@ -82,7 +83,7 @@ pub struct RevokeVote<'info> {
     governance_program_id: UncheckedAccount<'info>,
 
     /// CHECK: Owned by spl-governance instance specified in governance_program_id
-    #[account(owner = governance_program_id.key())]
+    #[account(mut, owner = governance_program_id.key())]
     vote_record_info: UncheckedAccount<'info>,
 
     /// CHECK: Owned by spl-governance instance specified in governance_program_id
@@ -91,14 +92,18 @@ pub struct RevokeVote<'info> {
 
     /// CHECK: Owned by spl-governance instance specified in governance_program_id
     #[account(owner = governance_program_id.key())]
+    realm_config_info: UncheckedAccount<'info>,
+
+    /// CHECK: Owned by spl-governance instance specified in governance_program_id
+    #[account(owner = governance_program_id.key())]
     governance_info: UncheckedAccount<'info>,
 
     /// CHECK: Owned by spl-governance instance specified in governance_program_id
-    #[account(owner = governance_program_id.key())]
+    #[account(mut, owner = governance_program_id.key())]
     proposal_info: UncheckedAccount<'info>,
 
     /// CHECK: Owned by spl-governance instance specified in governance_program_id
-    #[account(owner = governance_program_id.key())]
+    #[account(mut, owner = governance_program_id.key())]
     delegate_token_owner_record_info: UncheckedAccount<'info>,
 
     /// Either the realm community mint or the council mint.
@@ -187,6 +192,7 @@ pub fn revoke_vote<'a, 'b, 'c, 'd, 'e>(ctx: Context<'a, 'b, 'c, 'd, RevokeVote<'
                 weight_action_target: Some(ctx.accounts.vote_record_info.key()),
                 reserved: Default::default(),
             });
+        ctx.accounts.revoke_weight_record.exit(&crate::id())?;
 
         invoke(
             &ctx.accounts.get_relinquish_instruction(),
@@ -209,7 +215,7 @@ pub fn revoke_vote<'a, 'b, 'c, 'd, 'e>(ctx: Context<'a, 'b, 'c, 'd, RevokeVote<'
     Ok(())
 }
 
-fn get_relinquish_accounts<'e, 'f>(ctx: &'f Context<RevokeVote<'e>>) -> [AccountInfo<'e>; 9] {
+fn get_relinquish_accounts<'e, 'f>(ctx: &'f Context<RevokeVote<'e>>) -> [AccountInfo<'e>; 10] {
     [
         ctx.accounts.realm_info.to_account_info(),
         ctx.accounts.governance_info.to_account_info(),
@@ -219,9 +225,10 @@ fn get_relinquish_accounts<'e, 'f>(ctx: &'f Context<RevokeVote<'e>>) -> [Account
             .to_account_info(),
         ctx.accounts.vote_record_info.to_account_info(),
         ctx.accounts.realm_governing_token_mint.to_account_info(),
-        ctx.accounts.delegate.to_account_info(),
+        ctx.accounts.governing_token_owner.to_account_info(),
         ctx.accounts.delegate.to_account_info(),
         ctx.accounts.revoke_weight_record.to_account_info(),
+        ctx.accounts.realm_config_info.to_account_info(),
     ]
 }
 
@@ -234,7 +241,7 @@ impl<'a> RevokeVote<'a> {
             &self.proposal_info.key(),
             &self.delegate_token_owner_record_info.key(),
             &self.realm_governing_token_mint.key(),
-            Some(self.delegate.key()),
+            Some(self.governing_token_owner.key()),
             Some(self.delegate.key()),
             Some(self.revoke_weight_record.key()),
         )

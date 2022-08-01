@@ -140,6 +140,15 @@ impl ProgramTestBench {
             .unwrap();
     }
 
+    #[allow(dead_code)]
+    pub async fn advance_clock_a_lot(&self) {
+        let clock = self.get_clock().await;
+        self.context
+            .borrow_mut()
+            .warp_to_slot(clock.slot + 160)
+            .unwrap();
+    }
+
     pub async fn set_unix_time(&self, to: i64) {
         let clock = Clock {
             unix_timestamp: to,

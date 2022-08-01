@@ -88,6 +88,28 @@ impl VoterWeightRecord {
         Ok(self.voter_weight.checked_add(other.voter_weight).unwrap())
     }
 
+    pub fn get_revocation_address(
+        realm: &Pubkey,
+        governing_token_mint: &Pubkey,
+        governing_token_owner: &Pubkey,
+        target: &Pubkey,
+        action: Option<VoterWeightAction>,
+    ) -> Pubkey {
+        Pubkey::try_find_program_address(
+            &[
+                b"revocation".as_ref(),
+                realm.as_ref(),
+                governing_token_mint.as_ref(),
+                governing_token_owner.as_ref(),
+                target.as_ref(),
+                &borsh::to_vec(&action).unwrap(),
+            ],
+            &crate::id(),
+        )
+        .unwrap()
+        .0
+    }
+
     pub fn get_pda_address(
         realm: &Pubkey,
         governing_token_mint: &Pubkey,
