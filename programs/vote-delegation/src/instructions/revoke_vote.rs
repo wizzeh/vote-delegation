@@ -82,8 +82,8 @@ pub struct RevokeVote<'info> {
     #[account(executable)]
     governance_program_id: UncheckedAccount<'info>,
 
-    /// CHECK: Owned by spl-governance instance specified in governance_program_id
-    #[account(mut, owner = governance_program_id.key())]
+    /// CHECK: Ownership checked during execution
+    #[account(mut)]
     vote_record_info: UncheckedAccount<'info>,
 
     /// CHECK: Owned by spl-governance instance specified in governance_program_id
@@ -171,6 +171,11 @@ pub fn revoke_vote<'a, 'b, 'c, 'd, 'e>(ctx: Context<'a, 'b, 'c, 'd, RevokeVote<'
 
     // We only need to unvote if a vote has actually been cast.
     if !ctx.accounts.vote_record_info.data_is_empty() {
+        require_keys_eq!(
+            *ctx.accounts.vote_record_info.owner,
+            ctx.accounts.governance_program_id.key(),
+            ErrorCode::ConstraintOwner
+        );
         get_vote_record_data_for_proposal_and_token_owner_record(
             ctx.accounts.governance_program_id.key,
             &ctx.accounts.vote_record_info,
@@ -198,13 +203,13 @@ pub fn revoke_vote<'a, 'b, 'c, 'd, 'e>(ctx: Context<'a, 'b, 'c, 'd, RevokeVote<'
             &ctx.accounts.get_relinquish_instruction(),
             &get_relinquish_accounts(&ctx)[..],
         )?;
-
-        // This account is disposed here to prevent double-relinquishment.
-        dispose_account(
-            &ctx.accounts.revoke_weight_record.to_account_info(),
-            &ctx.accounts.payer,
-        );
     }
+
+    // This account is disposed here to prevent double-relinquishment.
+    dispose_account(
+        &ctx.accounts.revoke_weight_record.to_account_info(),
+        &ctx.accounts.payer,
+    );
 
     // The delegate paid for this account so they get the lamports back.
     dispose_account(
