@@ -107,6 +107,12 @@ pub fn update_voter_weight_record<'info>(
             ctx.accounts.settings.voter_weight_source,
             DelegationError::InvalidVoterWeightRecordSource
         );
+
+        require!(
+            delegation_info.data_is_empty(),
+            DelegationError::VoterWeightAlreadyDelegated
+        );
+
         let to_agg = OrphanAccount::<VoterWeightRecord>::try_from(vwr_account)?;
         ctx.accounts.voter_weight_record.voter_weight =
             ctx.accounts.voter_weight_record.try_aggregate(&to_agg)?;
