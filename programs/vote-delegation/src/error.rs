@@ -31,4 +31,7 @@ pub enum DelegationError {
 
     #[msg("Cannot manually create a revocation voter weight record.")]
     InvalidActionType,
+
+    #[msg("Did not provide a full set of delegator accounts")]
+    MissingDelegatorAccounts,
 }

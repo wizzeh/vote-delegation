@@ -1,7 +1,5 @@
 use anchor_lang::{
-    accounts::orphan::OrphanAccount,
-    prelude::*,
-    solana_program::clock::{DEFAULT_MS_PER_SLOT, DEFAULT_S_PER_SLOT},
+    accounts::orphan::OrphanAccount, prelude::*, solana_program::clock::DEFAULT_S_PER_SLOT,
 };
 use spl_governance::state::token_owner_record::get_token_owner_record_data_for_realm_and_governing_mint;
 use static_assertions::const_assert;
@@ -75,6 +73,11 @@ pub fn update_voter_weight_record<'info>(
         DelegationError::InvalidRealm
     );
 
+    require_eq!(
+        ctx.remaining_accounts.len() % 3,
+        0,
+        DelegationError::MissingDelegatorAccounts
+    );
     for to_aggregate in ctx.remaining_accounts.chunks_exact(3) {
         // Accumulate vote weight
         let mut to_aggregate_iter = to_aggregate.iter();

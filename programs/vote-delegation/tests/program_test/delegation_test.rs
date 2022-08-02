@@ -16,6 +16,7 @@ use vote_delegation::state::{
 use super::{
     governance_test::{GovernanceTest, ProposalCookie, RealmCookie, TokenOwnerRecordCookie},
     program_test_bench::{ProgramTestBench, WalletCookie},
+    tools::NopOverride,
 };
 
 pub struct DelegationTest {
@@ -298,6 +299,18 @@ impl DelegationTest {
         vwr: &VoterWeightRecordCookie,
         delegator_accounts: &[&DelegatorCookie],
     ) -> Result<(), TransportError> {
+        self.aggregate_delegation_using_ix(realm, owner, vwr, delegator_accounts, NopOverride)
+            .await
+    }
+
+    pub async fn aggregate_delegation_using_ix<F: Fn(&mut Instruction)>(
+        &mut self,
+        realm: &RealmCookie,
+        owner: &WalletCookie,
+        vwr: &VoterWeightRecordCookie,
+        delegator_accounts: &[&DelegatorCookie],
+        instruction_override: F,
+    ) -> Result<(), TransportError> {
         let data = anchor_lang::InstructionData::data(
             &vote_delegation::instruction::UpdateVoterWeightRecord {
                 voter_weight_action: vwr.action,
@@ -345,11 +358,13 @@ impl DelegationTest {
             });
         }
 
-        let update_voter_weight_record_ix = Instruction {
+        let mut update_voter_weight_record_ix = Instruction {
             program_id: vote_delegation::id(),
             accounts,
             data,
         };
+
+        instruction_override(&mut update_voter_weight_record_ix);
 
         self.bench
             .process_transaction(
