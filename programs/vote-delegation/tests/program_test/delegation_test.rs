@@ -234,6 +234,28 @@ impl DelegationTest {
         proposal: &ProposalCookie,
         to_revoke_token_owner_record: &TokenOwnerRecordCookie,
     ) -> Result<(), TransportError> {
+        self.revoke_vote_using_ix(
+            realm,
+            delegator,
+            to_revoke,
+            proposal,
+            to_revoke_token_owner_record,
+            NopOverride,
+            None,
+        )
+        .await
+    }
+
+    pub async fn revoke_vote_using_ix<F: Fn(&mut Instruction)>(
+        &mut self,
+        realm: &RealmCookie,
+        delegator: &DelegatorCookie,
+        to_revoke: &VoterWeightRecordCookie,
+        proposal: &ProposalCookie,
+        to_revoke_token_owner_record: &TokenOwnerRecordCookie,
+        instruction_override: F,
+        signers: Option<&[&Keypair]>,
+    ) -> Result<(), TransportError> {
         let data = anchor_lang::InstructionData::data(&vote_delegation::instruction::RevokeVote {});
 
         let accounts = anchor_lang::ToAccountMetas::to_account_metas(
@@ -276,17 +298,19 @@ impl DelegationTest {
             None,
         );
 
-        let revoke_ix = Instruction {
+        let mut revoke_ix = Instruction {
             program_id: vote_delegation::id(),
             accounts,
             data,
         };
 
+        instruction_override(&mut revoke_ix);
+
+        let default_signers = &[&self.bench.payer, &delegator.wallet.signer];
+        let signers = signers.unwrap_or(default_signers);
+
         self.bench
-            .process_transaction(
-                &[revoke_ix],
-                Some(&[&self.bench.payer, &delegator.wallet.signer]),
-            )
+            .process_transaction(&[revoke_ix], Some(signers))
             .await?;
 
         Ok(())

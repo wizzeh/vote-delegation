@@ -1,18 +1,11 @@
-use std::cell::RefMut;
-
+use anchor_lang::prelude::*;
 use anchor_lang::Discriminator;
-use anchor_lang::{
-    prelude::*,
-    system_program::{self, Transfer},
-};
 use solana_program::{
     program::{invoke, invoke_signed},
     system_instruction::{self, create_account},
 };
 
-use crate::error::DelegationError;
-
-use super::voter_weight_record::{VoterWeightAction, VoterWeightRecord};
+use super::voter_weight_record::VoterWeightAction;
 
 #[account]
 pub struct Delegation {

@@ -3,8 +3,9 @@ use crate::program_test::tools::assert_ix_err;
 use crate::program_test::tools::assert_vote_delegation_err;
 use anchor_lang::prelude::{AnchorError, ErrorCode};
 use program_test::delegation_test::DelegationTest;
+use solana_program::instruction::Instruction;
 use solana_program_test::tokio;
-use solana_sdk::transport::TransportError;
+use solana_sdk::{signature::Keypair, signer::Signer, transport::TransportError};
 use spl_governance::state::{proposal::ProposalV2, vote_record::get_vote_record_address};
 use vote_delegation::{
     error::DelegationError,
@@ -320,6 +321,7 @@ async fn test_repeat_revoke_voter_weight_record_err() -> TestOutcome {
         .await
         .err()
         .unwrap();
+
     // Assert
     assert_anchor_err(err, ErrorCode::AccountNotInitialized);
 

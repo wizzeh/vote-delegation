@@ -114,7 +114,7 @@ pub struct RevokeVote<'info> {
     system_program: Program<'info, System>,
 }
 
-pub fn revoke_vote<'a, 'b, 'c, 'd, 'e>(ctx: Context<'a, 'b, 'c, 'd, RevokeVote<'e>>) -> Result<()> {
+pub fn revoke_vote(ctx: Context<RevokeVote>) -> Result<()> {
     let delegation_record_data = &ctx.accounts.delegation_record;
 
     require_keys_eq!(
