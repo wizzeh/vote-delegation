@@ -13,6 +13,19 @@ use crate::{
     },
 };
 
+/**
+ * Aggregates delegated voter weight.
+ *
+ * This instruction is used to aggregate voter weight which has been delegated to a user
+ * into their Voter Weight Record.
+ *
+ * For each source of voter weight to be aggregated, the following accounts must be
+ * provided as additional accounts:
+ *  - The VoterWeightRecord account produced by this program's voter weight source (not
+ * signer, not writable).
+ *  - The Realms TokenOwnerRecord of the delegator (not signer, not writable).
+ *  - The Delegation PDA account `Delegation::get_pda_address` (not signer, writable).
+ */
 #[derive(Accounts)]
 #[instruction(voter_weight_action: VoterWeightAction, target: Option<Pubkey>)]
 pub struct UpdateVoterWeightRecord<'info> {

@@ -6,6 +6,12 @@ use crate::{
 };
 use anchor_spl::token::Mint;
 
+/**
+ * Creates a new VoterWeightRecord
+ *
+ * You must create a VoterWeightRecord for each target and action you wish to use. Created
+ * VoterWeightRecords initially have 0 voter weight.
+ */
 #[derive(Accounts)]
 #[instruction(governing_token_owner: Pubkey, target: Pubkey, action: VoterWeightAction)]
 pub struct CreateVoterWeightRecord<'info> {

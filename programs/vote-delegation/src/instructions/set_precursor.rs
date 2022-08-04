@@ -3,6 +3,13 @@ use spl_governance::state::realm::get_realm_data;
 
 use crate::{error::DelegationError, state::settings::Settings};
 
+/**
+ * Sets up voter weight delegation middleware
+ *
+ * This instruction must be signed by the realm's authority. It can be used to configure
+ * the source of voter weight used by this program for a particular realm and community
+ * mint.
+ */
 #[derive(Accounts)]
 #[instruction(mint: Pubkey, voter_weight_source: Pubkey)]
 pub struct SetPrecursor<'info> {

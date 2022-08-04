@@ -21,12 +21,21 @@ use crate::{
     tools::dispose_account,
 };
 
+/**
+ * Revokes delegated vote weight
+ *
+ * This instruction can be called by any user on a VoterWeightRecord produced by this
+ * program which includes voter weight delegated by them. When called, it revokes their
+ * delegated voter weight. If that voter weight has been used to cast a vote, the vote
+ * will be modified to reflect this.
+ */
 #[derive(Accounts)]
 pub struct RevokeVote<'info> {
     /// CHECK: Payer
     #[account(mut)]
     payer: UncheckedAccount<'info>,
 
+    /// This account is created, used, and freed within this instruction.
     #[account(
         init,
         seeds = [
@@ -44,6 +53,7 @@ pub struct RevokeVote<'info> {
     )]
     revoke_weight_record: OrphanAccount<'info, VoterWeightRecord>,
 
+    /// User who cast the vote which is now being revoked.
     /// CHECK: Delegate
     #[account(mut)]
     delegate: UncheckedAccount<'info>,
@@ -102,6 +112,7 @@ pub struct RevokeVote<'info> {
     #[account(mut, owner = governance_program_id.key())]
     proposal_info: UncheckedAccount<'info>,
 
+    /// Token Owner Record for Delegate.
     /// CHECK: Owned by spl-governance instance specified in governance_program_id
     #[account(mut, owner = governance_program_id.key())]
     delegate_token_owner_record_info: UncheckedAccount<'info>,
@@ -109,6 +120,7 @@ pub struct RevokeVote<'info> {
     /// Either the realm community mint or the council mint.
     realm_governing_token_mint: Account<'info, Mint>,
 
+    /// User who wants their voter weight revoked.
     governing_token_owner: Signer<'info>,
 
     system_program: Program<'info, System>,
