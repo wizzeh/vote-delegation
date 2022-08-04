@@ -469,3 +469,90 @@ async fn test_aggregate_vwr_from_wrong_source_err() -> TestOutcome {
 
     Ok(())
 }
+
+#[tokio::test]
+async fn test_update_voter_weight_record_with_own_weight() -> TestOutcome {
+    // Arrange
+    let mut vote_delegation_test = DelegationTest::start_new().await;
+    let realm_cookie = vote_delegation_test.governance.with_realm().await?;
+    let wallet = vote_delegation_test.bench.with_wallet().await;
+    let token_owner_record = vote_delegation_test
+        .governance
+        .with_token_owner_record(&realm_cookie, &wallet)
+        .await?;
+    let fake_proposal = Keypair::new();
+    let vwr_cookie = vote_delegation_test
+        .with_vwr(
+            &realm_cookie,
+            &wallet,
+            fake_proposal.pubkey(),
+            VoterWeightAction::CastVote,
+        )
+        .await?;
+    let precursor_cookie = vote_delegation_test
+        .with_precursor_program(&realm_cookie)
+        .await?;
+
+    let own_vwr = vote_delegation_test
+        .with_self(
+            &realm_cookie,
+            &precursor_cookie,
+            &wallet,
+            10,
+            Some(u64::max_value()),
+            VoterWeightAction::CastVote,
+            fake_proposal.pubkey(),
+        )
+        .await?;
+
+    // Act
+    vote_delegation_test
+        .aggregate_delegation_for_self(
+            &realm_cookie,
+            &wallet,
+            &vwr_cookie,
+            &own_vwr,
+            &token_owner_record,
+        )
+        .await?;
+
+    // Assert
+    let vwr_record = vote_delegation_test
+        .bench
+        .get_anchor_account::<VoterWeightRecord>(vwr_cookie.address)
+        .await;
+
+    let delegate_record_addr = Delegation::get_pda_address(
+        &realm_cookie.address,
+        &realm_cookie.account.community_mint,
+        &wallet.address,
+        &own_vwr.target,
+        Some(own_vwr.action),
+    );
+    let delegate_record = vote_delegation_test
+        .bench
+        .get_anchor_account::<Delegation>(delegate_record_addr)
+        .await;
+    let delegate_record_acct = vote_delegation_test
+        .bench
+        .get_account(&delegate_record_addr)
+        .await
+        .unwrap();
+
+    assert_eq!(delegate_record.delegate, wallet.address);
+    assert_eq!(delegate_record.voter_weight, 10);
+    assert!(vote_delegation_test.bench.get_rent().await.is_exempt(
+        delegate_record_acct.lamports,
+        delegate_record_acct.data.len()
+    ));
+
+    assert_eq!(vwr_record.weight_action, Some(VoterWeightAction::CastVote));
+    assert_eq!(
+        vwr_record.weight_action_target,
+        Some(fake_proposal.pubkey())
+    );
+    assert_ne!(vwr_record.voter_weight_expiry, Some(0));
+    assert_eq!(vwr_record.voter_weight, 10);
+
+    Ok(())
+}

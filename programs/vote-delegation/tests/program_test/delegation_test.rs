@@ -5,7 +5,8 @@ use solana_program::instruction::Instruction;
 use solana_program_test::{processor, ProgramTest};
 use solana_sdk::{signature::Keypair, signer::Signer, transport::TransportError};
 use spl_governance::state::{
-    realm_config::get_realm_config_address, vote_record::get_vote_record_address,
+    realm_config::get_realm_config_address, token_owner_record,
+    vote_record::get_vote_record_address,
 };
 use vote_delegation::state::{
     delegation::Delegation,
@@ -78,6 +79,42 @@ impl DelegationTest {
             .await?;
 
         Ok(())
+    }
+
+    pub async fn with_self(
+        &mut self,
+        realm: &RealmCookie,
+        predecessor: &PrecursorProgramCookie,
+        wallet: &WalletCookie,
+        weight: u64,
+        expiry: Option<u64>,
+        action: VoterWeightAction,
+        target: Pubkey,
+    ) -> Result<VoterWeightRecordCookie, TransportError> {
+        let vwr_cookie = VoterWeightRecordCookie {
+            address: Keypair::new().pubkey(),
+            owner: wallet.address,
+            action,
+            target,
+        };
+        self.bench
+            .set_anchor_account(
+                &VoterWeightRecord {
+                    realm: realm.address,
+                    governing_token_mint: realm.account.community_mint,
+                    governing_token_owner: wallet.address,
+                    voter_weight: weight,
+                    voter_weight_expiry: expiry,
+                    weight_action: Some(action),
+                    weight_action_target: Some(target),
+                    reserved: Default::default(),
+                },
+                vwr_cookie.address,
+                predecessor.address,
+            )
+            .await?;
+
+        Ok(vwr_cookie)
     }
 
     pub async fn with_delegator(
@@ -389,6 +426,75 @@ impl DelegationTest {
         };
 
         instruction_override(&mut update_voter_weight_record_ix);
+
+        self.bench
+            .process_transaction(
+                &[update_voter_weight_record_ix],
+                Some(&[&self.bench.payer, &owner.signer]),
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn aggregate_delegation_for_self(
+        &mut self,
+        realm: &RealmCookie,
+        owner: &WalletCookie,
+        vwr: &VoterWeightRecordCookie,
+        own_vwr: &VoterWeightRecordCookie,
+        own_token_owner_record: &TokenOwnerRecordCookie,
+    ) -> Result<(), TransportError> {
+        let data = anchor_lang::InstructionData::data(
+            &vote_delegation::instruction::UpdateVoterWeightRecord {
+                voter_weight_action: vwr.action,
+                target: Some(vwr.target),
+            },
+        );
+
+        let mut accounts = anchor_lang::ToAccountMetas::to_account_metas(
+            &vote_delegation::accounts::UpdateVoterWeightRecord {
+                delegate: vwr.owner,
+                payer: self.bench.payer.pubkey(),
+                settings: Settings::get_pda_address(
+                    &realm.address,
+                    &realm.community_mint_cookie.address,
+                ),
+                voter_weight_record: vwr.address,
+                system_program: solana_sdk::system_program::id(),
+                governance_program_id: self.governance.program_id,
+                realm: realm.address,
+            },
+            None,
+        );
+
+        accounts.push(AccountMeta {
+            pubkey: own_vwr.address,
+            is_signer: false,
+            is_writable: false,
+        });
+        accounts.push(AccountMeta {
+            pubkey: own_token_owner_record.address,
+            is_signer: false,
+            is_writable: false,
+        });
+        accounts.push(AccountMeta {
+            pubkey: Delegation::get_pda_address(
+                &realm.address,
+                &realm.community_mint_cookie.address,
+                &owner.address,
+                &own_vwr.target,
+                Some(own_vwr.action),
+            ),
+            is_signer: false,
+            is_writable: true,
+        });
+
+        let update_voter_weight_record_ix = Instruction {
+            program_id: vote_delegation::id(),
+            accounts,
+            data,
+        };
 
         self.bench
             .process_transaction(

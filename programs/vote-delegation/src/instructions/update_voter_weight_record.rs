@@ -78,6 +78,7 @@ pub fn update_voter_weight_record<'info>(
         0,
         DelegationError::MissingDelegatorAccounts
     );
+
     for to_aggregate in ctx.remaining_accounts.chunks_exact(3) {
         // Accumulate vote weight
         let mut to_aggregate_iter = to_aggregate.iter();
@@ -92,15 +93,18 @@ pub fn update_voter_weight_record<'info>(
             &ctx.accounts.voter_weight_record.governing_token_mint,
         )?;
 
-        require!(
-            token_owner_record.governance_delegate.is_some(),
-            DelegationError::VoterWeightNotDelegatedToDelegate
-        );
-        require_keys_eq!(
-            token_owner_record.governance_delegate.unwrap(),
-            ctx.accounts.delegate.key(),
-            DelegationError::VoterWeightNotDelegatedToDelegate
-        );
+        // You can always aggregate your own voter weight.
+        if token_owner_record.governing_token_owner != ctx.accounts.delegate.key() {
+            require!(
+                token_owner_record.governance_delegate.is_some(),
+                DelegationError::VoterWeightNotDelegatedToDelegate
+            );
+            require_keys_eq!(
+                token_owner_record.governance_delegate.unwrap(),
+                ctx.accounts.delegate.key(),
+                DelegationError::VoterWeightNotDelegatedToDelegate
+            );
+        }
 
         require_keys_eq!(
             *vwr_account.owner,
