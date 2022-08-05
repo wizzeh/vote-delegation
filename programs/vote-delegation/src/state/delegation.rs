@@ -10,6 +10,7 @@ use super::voter_weight_record::VoterWeightAction;
 #[account]
 pub struct Delegation {
     pub delegate: Pubkey,
+    pub voter_weight_record: Pubkey,
     pub voter_weight: u64,
 }
 

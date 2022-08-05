@@ -167,6 +167,7 @@ pub fn update_voter_weight_record<'info>(
             &[bump],
             &Delegation {
                 delegate: ctx.accounts.delegate.key(),
+                voter_weight_record: ctx.accounts.voter_weight_record.key(),
                 voter_weight: to_agg.voter_weight,
             },
         )?;

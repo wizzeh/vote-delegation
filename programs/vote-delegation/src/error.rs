@@ -32,6 +32,12 @@ pub enum DelegationError {
     #[msg("Cannot manually create a revocation voter weight record.")]
     InvalidActionType,
 
-    #[msg("Did not provide a full set of delegator accounts")]
+    #[msg("Did not provide a full set of delegator accounts.")]
     MissingDelegatorAccounts,
+
+    #[msg("Cannot close an account not owned by caller.")]
+    VoterWeightRecordWrongOwner,
+
+    #[msg("Target is in the wrong state to reclaim lamports.")]
+    ReclaimTargetWrongState,
 }

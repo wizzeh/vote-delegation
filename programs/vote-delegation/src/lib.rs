@@ -41,4 +41,12 @@ pub mod vote_delegation {
     ) -> Result<()> {
         instructions::update_voter_weight_record(ctx, voter_weight_action, target)
     }
+
+    pub fn reclaim_voter_weight_record(ctx: Context<ReclaimVoterWeightRecord>) -> Result<()> {
+        instructions::reclaim_voter_weight_record(ctx)
+    }
+
+    pub fn reclaim_delegation(ctx: Context<ReclaimDelegation>) -> Result<()> {
+        instructions::reclaim_delegation(ctx)
+    }
 }

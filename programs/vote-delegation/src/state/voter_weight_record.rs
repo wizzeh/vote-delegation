@@ -2,6 +2,9 @@ use anchor_lang::{
     accounts::orphan::Orphan, prelude::*, solana_program::program_pack::IsInitialized,
 };
 use num_derive::FromPrimitive;
+use spl_governance::state::{
+    enums::ProposalState, governance::get_governance_data, proposal::get_proposal_data,
+};
 
 use crate::error::DelegationError;
 
@@ -146,6 +149,39 @@ impl VoterWeightRecord {
             target.as_ref(),
             action,
         ]
+    }
+
+    pub fn assert_can_reclaim(
+        &self,
+        target: &AccountInfo,
+        governance_program_id: &Pubkey,
+    ) -> Result<()> {
+        match self.weight_action.unwrap() {
+            VoterWeightAction::CastVote | VoterWeightAction::CommentProposal => {
+                if let Ok(proposal) = get_proposal_data(governance_program_id, target) {
+                    require!(
+                        proposal.state == ProposalState::Completed,
+                        DelegationError::ReclaimTargetWrongState
+                    );
+                }
+            }
+            VoterWeightAction::SignOffProposal => {
+                if let Ok(proposal) = get_proposal_data(governance_program_id, target) {
+                    require!(
+                        proposal.assert_can_sign_off().is_err(),
+                        DelegationError::ReclaimTargetWrongState
+                    );
+                }
+            }
+            VoterWeightAction::CreateGovernance => {
+                let governance = get_governance_data(governance_program_id, target);
+                require!(governance.is_ok(), DelegationError::ReclaimTargetWrongState);
+            }
+            VoterWeightAction::CreateProposal => {}
+            VoterWeightAction::RevokeVote => {}
+        };
+
+        Ok(())
     }
 }
 
