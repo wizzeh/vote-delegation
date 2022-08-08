@@ -17,6 +17,7 @@ pub struct ReclaimVoterWeightRecord<'info> {
     )]
     voter_weight_record: OrphanAccount<'info, VoterWeightRecord>,
 
+    /// CHECK: Will be deserialized depending on voter_weight_record type.
     #[account(owner = governance_program_id.key())]
     target: AccountInfo<'info>,
 

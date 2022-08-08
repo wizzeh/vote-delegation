@@ -160,7 +160,9 @@ impl VoterWeightRecord {
             VoterWeightAction::CastVote | VoterWeightAction::CommentProposal => {
                 if let Ok(proposal) = get_proposal_data(governance_program_id, target) {
                     require!(
-                        proposal.state == ProposalState::Completed,
+                        proposal.state != ProposalState::Voting
+                            && proposal.state != ProposalState::SigningOff
+                            && proposal.state != ProposalState::Draft,
                         DelegationError::ReclaimTargetWrongState
                     );
                 }

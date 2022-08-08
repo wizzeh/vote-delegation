@@ -40,4 +40,7 @@ pub enum DelegationError {
 
     #[msg("Target is in the wrong state to reclaim lamports.")]
     ReclaimTargetWrongState,
+
+    #[msg("Cannot reclaim lamports from delegation record until voter record is closed.")]
+    CannotReclaimDelegationRecordYet,
 }

@@ -7,6 +7,7 @@ use solana_program::{
 
 use super::voter_weight_record::VoterWeightAction;
 
+#[derive(Debug)]
 #[account]
 pub struct Delegation {
     pub delegate: Pubkey,

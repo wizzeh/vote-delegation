@@ -505,4 +505,82 @@ impl DelegationTest {
 
         Ok(())
     }
+
+    #[allow(dead_code)]
+    pub async fn reclaim_voter_weight_record(
+        &mut self,
+        token_owner_cookie: &WalletCookie,
+        proposal_cookie: &ProposalCookie,
+        vwr_cookie: &VoterWeightRecordCookie,
+    ) -> Result<(), TransportError> {
+        let data = anchor_lang::InstructionData::data(
+            &vote_delegation::instruction::ReclaimVoterWeightRecord {},
+        );
+
+        let accounts = anchor_lang::ToAccountMetas::to_account_metas(
+            &vote_delegation::accounts::ReclaimVoterWeightRecord {
+                payer: self.bench.payer.pubkey(),
+                caller: token_owner_cookie.address,
+                voter_weight_record: vwr_cookie.address,
+                target: vwr_cookie.target,
+                governance_program_id: self.governance.program_id,
+            },
+            None,
+        );
+
+        let reclaim_voter_weight_record_ix = Instruction {
+            program_id: vote_delegation::id(),
+            accounts,
+            data,
+        };
+
+        self.bench
+            .process_transaction(
+                &[reclaim_voter_weight_record_ix],
+                Some(&[&self.bench.payer, &token_owner_cookie.signer]),
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    #[allow(dead_code)]
+    pub async fn reclaim_delegation_record(
+        &mut self,
+        realm: &RealmCookie,
+        delegate: &WalletCookie,
+        vwr_cookie: &VoterWeightRecordCookie,
+        delegator: &DelegatorCookie,
+    ) -> Result<(), TransportError> {
+        let data =
+            anchor_lang::InstructionData::data(&vote_delegation::instruction::ReclaimDelegation {});
+
+        let accounts = anchor_lang::ToAccountMetas::to_account_metas(
+            &vote_delegation::accounts::ReclaimDelegation {
+                payer: self.bench.payer.pubkey(),
+                voter_weight_record: vwr_cookie.address,
+                delegate: delegate.address,
+                delegation: Delegation::get_pda_address(
+                    &realm.address,
+                    &realm.community_mint_cookie.address,
+                    &delegator.wallet.address,
+                    &delegator.source_vwr.target,
+                    Some(delegator.source_vwr.action),
+                ),
+            },
+            None,
+        );
+
+        let reclaim_delegation_ix = Instruction {
+            program_id: vote_delegation::id(),
+            accounts,
+            data,
+        };
+
+        self.bench
+            .process_transaction(&[reclaim_delegation_ix], Some(&[&self.bench.payer]))
+            .await?;
+
+        Ok(())
+    }
 }
