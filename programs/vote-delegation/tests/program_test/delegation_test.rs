@@ -5,8 +5,7 @@ use solana_program::instruction::Instruction;
 use solana_program_test::{processor, ProgramTest};
 use solana_sdk::{signature::Keypair, signer::Signer, transport::TransportError};
 use spl_governance::state::{
-    realm_config::get_realm_config_address, token_owner_record,
-    vote_record::get_vote_record_address,
+    realm_config::get_realm_config_address, vote_record::get_vote_record_address,
 };
 use vote_delegation::state::{
     delegation::Delegation,

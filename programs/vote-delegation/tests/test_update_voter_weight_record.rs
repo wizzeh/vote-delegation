@@ -1,6 +1,6 @@
 use anchor_lang::prelude::Pubkey;
 use program_test::{delegation_test::DelegationTest, tools::assert_vote_delegation_err};
-use solana_program::{instruction::Instruction, program_pack::IsInitialized, vote};
+use solana_program::instruction::Instruction;
 use solana_program_test::tokio;
 use solana_sdk::{signature::Keypair, signer::Signer, transport::TransportError};
 use vote_delegation::{
