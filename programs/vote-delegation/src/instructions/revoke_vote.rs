@@ -1,5 +1,4 @@
 use anchor_lang::{
-    accounts::orphan::OrphanAccount,
     prelude::*,
     solana_program::{instruction::Instruction, program::invoke},
 };
@@ -51,7 +50,7 @@ pub struct RevokeVote<'info> {
         space = 8 + std::mem::size_of::<VoterWeightRecord>(),
         owner = crate::ID
     )]
-    revoke_weight_record: OrphanAccount<'info, VoterWeightRecord>,
+    revoke_weight_record: Account<'info, VoterWeightRecord>,
 
     /// User who cast the vote which is now being revoked.
     /// CHECK: Delegate
@@ -85,7 +84,7 @@ pub struct RevokeVote<'info> {
         bump,
         owner = crate::ID
     )]
-    delegated_voter_weight_record: OrphanAccount<'info, VoterWeightRecord>,
+    delegated_voter_weight_record: Account<'info, VoterWeightRecord>,
 
     /// The program id of the spl-governance program the realm belongs to
     /// CHECK: Can be any instance of spl-governance and it's not known at the compilation time

@@ -1,6 +1,4 @@
-use anchor_lang::{
-    accounts::orphan::OrphanAccount, prelude::*, solana_program::clock::DEFAULT_S_PER_SLOT,
-};
+use anchor_lang::{prelude::*, solana_program::clock::DEFAULT_S_PER_SLOT};
 use spl_governance::state::token_owner_record::get_token_owner_record_data_for_realm_and_governing_mint;
 use static_assertions::const_assert;
 
@@ -58,7 +56,7 @@ pub struct UpdateVoterWeightRecord<'info> {
         bump,
         owner = crate::id()
     )]
-    voter_weight_record: OrphanAccount<'info, VoterWeightRecord>,
+    voter_weight_record: Account<'info, VoterWeightRecord>,
 
     system_program: Program<'info, System>,
 
@@ -130,7 +128,8 @@ pub fn update_voter_weight_record<'info>(
             DelegationError::VoterWeightAlreadyDelegated
         );
 
-        let to_agg = OrphanAccount::<VoterWeightRecord>::try_from(vwr_account)?;
+        let mut data: &[u8] = &vwr_account.try_borrow_data()?;
+        let to_agg = VoterWeightRecord::try_deserialize(&mut data)?;
         ctx.accounts.voter_weight_record.voter_weight =
             ctx.accounts.voter_weight_record.try_aggregate(&to_agg)?;
 

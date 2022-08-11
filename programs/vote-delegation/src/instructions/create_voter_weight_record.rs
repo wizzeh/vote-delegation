@@ -1,4 +1,4 @@
-use anchor_lang::{accounts::orphan::OrphanAccount, prelude::*};
+use anchor_lang::prelude::*;
 
 use crate::{
     error::DelegationError,
@@ -33,7 +33,7 @@ pub struct CreateVoterWeightRecord<'info> {
         space = 8 + std::mem::size_of::<VoterWeightRecord>(),
         owner = crate::ID
     )]
-    voter_weight_record: OrphanAccount<'info, VoterWeightRecord>,
+    voter_weight_record: Account<'info, VoterWeightRecord>,
 
     /// The program id of the spl-governance program the realm belongs to
     /// CHECK: Can be any instance of spl-governance and it's not known at the compilation time

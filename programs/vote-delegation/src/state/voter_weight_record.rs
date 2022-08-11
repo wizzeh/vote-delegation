@@ -1,6 +1,4 @@
-use anchor_lang::{
-    accounts::orphan::Orphan, prelude::*, solana_program::program_pack::IsInitialized,
-};
+use anchor_lang::{prelude::*, solana_program::program_pack::IsInitialized};
 use num_derive::FromPrimitive;
 use spl_governance::state::{
     enums::ProposalState, governance::get_governance_data, proposal::get_proposal_data,
@@ -36,7 +34,7 @@ pub enum VoterWeightAction {
 /// It's redefined here without account_discriminator for Anchor to treat it as native account
 ///
 /// The account is used as an api interface to provide voting power to the governance program from external addin contracts
-#[account(account)]
+#[account]
 #[derive(Debug, PartialEq)]
 pub struct VoterWeightRecord {
     /// The Realm the VoterWeightRecord belongs to
@@ -76,8 +74,6 @@ pub struct VoterWeightRecord {
     /// Reserved space for future versions
     pub reserved: [u8; 8],
 }
-
-impl Orphan for VoterWeightRecord {}
 
 impl VoterWeightRecord {
     pub fn try_aggregate(&self, other: &VoterWeightRecord) -> Result<u64> {
