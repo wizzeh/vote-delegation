@@ -9,3 +9,6 @@ See documentation of individual instructions for more information.
 - `create_voter_weight_record`: Creates an empty voter weight record. This record will be aggregated to by future transactions.
 - `update_voter_weight_record`: Updates a voter weight record owned by the caller by aggregating the voter weight of delegating users.
 - `revoke_vote`: Revokes voter weight which has been delegated by the caller using this program. This instruction can be called either before or after a vote has been cast, as long as the target still has voting open.
+
+## Solana Program Library
+I currently maintain corresponding SPL changes for this program at (the relinquish-partial branch of my SPL fork)[https://github.com/wizzeh/solana-program-library/tree/relinquish-partial].
